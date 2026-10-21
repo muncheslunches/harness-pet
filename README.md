@@ -4,10 +4,10 @@
 
 Desktop pets that keep an eye on your coding agents. A pet sits on your screen, acts out what your agent is doing (thinking, working, waiting for you, done) and jumps you back into the right app with one click. It ships with **Clawrk**, a pixel crab. You can create your own pets with any coding agent, share them as single files, and run several at once, each following a different agent.
 
-**Windows 10/11 x64 · development source, preparing `0.1.0-beta.1`.** It's free and open source (MIT), with no telemetry. Electron blocks external network requests; configured buttons can open other applications or websites through Windows. Worried about the keyboard watcher? Don't take our word for it: [verify it yourself](#verify-it-yourself).
+**Windows 10/11 x64 · pre-beta, run from source · preparing `0.1.0-beta.1`.** It's free and open source (MIT), with no telemetry. Electron blocks external network requests; configured buttons can open other applications or websites through Windows. Worried about the keyboard watcher? Don't take our word for it: [verify it yourself](#verify-it-yourself).
 
 > [!IMPORTANT]
-> **There is no verified installer yet.** This repository is work-in-progress source. A downloadable beta will be published on the [Releases](https://github.com/muncheslunches/harness-pet/releases) page only after its clean-machine, live Claude Code, upgrade/uninstall and soak checks pass. Until then you can [run it from source](#run-from-source) or build an installer yourself at your own risk. See [CONTRIBUTING.md](CONTRIBUTING.md) for development and bug-reporting guidance, and [CHANGELOG.md](CHANGELOG.md) for the known open items.
+> **Pre-beta: try it from source, no installer yet.** You can [run Harness Pet from source](#run-from-source) today in a few minutes. So far it has been tested on one machine: the maintainer's Windows 11 PC, where it has run daily for several days alongside real Claude Code sessions. It hasn't yet been tested on other PCs, display setups, Windows 10 or agents other than Claude Code, so expect rough edges and please [open an issue](https://github.com/muncheslunches/harness-pet/issues) when you hit one. A downloadable installer will appear on [Releases](https://github.com/muncheslunches/harness-pet/releases) once clean-machine and upgrade/uninstall checks pass. See [CHANGELOG.md](CHANGELOG.md) for known open items.
 
 ![Clawrk animation supplied by the project owner](docs/images/clawrk.gif)
 
@@ -36,6 +36,38 @@ The screenshots use the current app with an isolated profile and sample session 
 
 ## Run it
 
+### Run from source
+
+This is the way to try Harness Pet during the pre-beta. You need:
+
+- Windows 10 or 11, 64-bit
+- [Node.js 22](https://nodejs.org/) (CI uses 22.23.3)
+- [Git](https://git-scm.com/download/win)
+
+Pick a folder you'll keep, then run:
+
+```powershell
+git clone https://github.com/muncheslunches/harness-pet.git
+cd harness-pet
+npm install
+npm start
+```
+
+Clawrk appears on your screen, and a cage icon appears in the system tray. Click the cage to open the **Studio**. To start it again later, run `npm start` from the same folder.
+
+To link it to Claude Code, open **Agents → Claude Code** in the Studio and press **Connect**, or run `npm run hooks:claude`. Start a new Claude Code session afterwards. Connect adds a few hooks to `~/.claude/settings.json` and keeps your existing hooks and settings.
+
+> [!WARNING]
+> Connected hooks run from this folder. **Press Disconnect in the Studio before you move or delete it**, or Claude Code will report hook errors. Pre-beta builds can change without notice: run `git pull` and `npm install` to update, then press Connect again.
+
+#### Or let your coding agent set it up
+
+Paste this into Claude Code, Codex, Cursor or a similar agent:
+
+> Clone https://github.com/muncheslunches/harness-pet into a folder I'll keep. Check that I have Windows 10/11 x64, Git and Node.js 22, and tell me if anything is missing instead of installing it. Then run `npm install` and `npm start`. Don't connect any agent hooks until I ask. Afterwards, tell me how to open the Studio and how to disconnect before removing the folder.
+
+Read [Privacy](#privacy) first if you want to know what the app sees. [Verify it yourself](#verify-it-yourself) shows how to check.
+
 ### Install a local Windows build
 
 No official installer has been published yet. Once you build one as described
@@ -58,24 +90,6 @@ The distributable installer is written to `dist/`. Share the setup `.exe`;
 `dist/win-unpacked` is the complete unpacked app for inspection and requires
 all its accompanying files. The build never publishes or launches the app.
 Keep the installed app in place so configured agent hooks keep working.
-
-### Run from source
-
-Requires Windows 10/11 x64 and Node.js 22 (CI uses 22.23.3).
-
-```bash
-npm install
-```
-
-```bash
-npm start
-```
-
-Click the cage in the tray to open the **Studio**. In **Agents → Claude Code**, press **Connect**, or from a terminal:
-
-```bash
-npm run hooks:claude
-```
 
 ## Using the pet
 
