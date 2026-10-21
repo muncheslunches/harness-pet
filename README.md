@@ -219,6 +219,8 @@ Pet files over 1 MB are rejected. A load that exceeds five seconds or an animati
 
 These work, but they're rougher than the rest of the app and may change or disappear. Find them in the Studio sidebar under **Experimental**, below **Add a pet to the screen**.
 
+![A swarm of duplicated pets following the mouse cursor](docs/images/duplicate-swarm.gif)
+
 - **Duplicate selected pet** puts another copy of the selected pet on screen. Each duplicate starts as a copy of the original, agent and settings included, and can then be changed on its own. Press it a few times for a swarm.
 - **Dismiss all duplicates** removes every duplicate at once and leaves your original pets alone.
 - **...cage...** adds an ornate cage to the screen. Drop pets into it to cage them: caged pets stay inside, move more slowly and ignore other pets. Untick it to release them.
