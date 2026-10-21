@@ -1,0 +1,21 @@
+# Signing the Windows release
+
+Planning notes checked on 2026-10-19. **Decision: the first beta (`0.1.0-beta.1`) ships unsigned**, with published SHA-256 checksums. Windows SmartScreen will warn about an unsigned installer; a checksum confirms the bytes match the release, not who published it. No signing account, certificate, credentials or build configuration has been created. The options below are for a later release.
+
+## Choose a route
+
+- **Microsoft Azure Artifact Signing** (formerly Trusted Signing): create an Azure subscription/signing account, complete identity validation, and create a Public Trust certificate profile. Individual developers currently must be in the US or Canada; organization eligibility covers more regions. Your validated publisher identity appears on the certificate. See Microsoft's [setup and eligibility guide](https://learn.microsoft.com/en-us/azure/artifact-signing/quickstart).
+- **A commercial code-signing certificate:** use a certificate authority's supported hardware token or hosted signing service. Confirm identity requirements, hardware/cloud support and electron-builder integration before buying. The installed builder supports Windows certificate-store selection and custom signing hooks; see [electron-builder v26 Windows signing](https://www.electron.build/v26/docs/features/code-signing/code-signing-win/).
+- **SignPath Foundation:** an application route for eligible open-source projects, with project review, verifiable builds, a published signing policy and manual signing approval. Acceptance is not automatic and requires verifiable project reputation, so do not assume a brand-new local project qualifies. See the [Foundation's conditions](https://signpath.org/terms).
+
+## Before the release commit and tag
+
+1. Choose the provider and the publisher identity you want users to see. Complete identity validation and signing access before relying on it for a release.
+2. Configure the existing builder version's signing integration in `electron-builder.config.js`. For its Azure integration, use `win.azureSignOptions` with the account, profile, endpoint and matching publisher name. Grant the build identity signing access. Keep credentials and private keys outside the repository; pass authentication through the provider's supported environment or secret store. Use `forceCodeSigning: true` for the release configuration so a release build fails if it cannot be signed. [Builder configuration](https://www.electron.build/v26/docs/features/code-signing/code-signing-win/)
+3. Run tests and build with `npm run dist:win`, which already uses `--publish never`. Check the installed app executable, setup installer and generated uninstaller for valid signatures and timestamps. The bundled third-party Node runtime should retain its upstream signature; verify it separately. Test install, Claude hook connection/disconnection and uninstall on a clean Windows machine.
+4. Review the signing configuration and final release docs, then commit locally and tag the intended source revision. Produce the distributable from that revision. Signing applies to the built binaries; a Git commit itself does not require Windows code signing. A separate Git commit signature is a different feature.
+5. Verify the final signed files again and calculate SHA-256 checksums **after** signing, because signing changes file bytes. Only publish/upload when the owner explicitly decides to do so. Editing a signed binary or rebuilding it produces a different artifact that needs signing and verification again.
+
+In ordinary Windows PowerShell, inspect each release executable with `Get-AuthenticodeSignature -FilePath 'C:\path\to\file.exe'`. Check that the status is `Valid`, the signer is expected, and a timestamp is present. The Windows SDK's `signtool verify /pa /all /v` can provide a fuller verification of each file.
+
+A valid signature identifies the publisher and detects changes. It does not guarantee that a new publisher avoids every SmartScreen prompt; Microsoft says Artifact Signing reputation builds over time. See [Microsoft's signing guidance](https://learn.microsoft.com/en-us/windows/msix/package/sign-msix-package-guide#production-azure-artifact-signing-formerly-trusted-signing).

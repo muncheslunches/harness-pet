@@ -1,0 +1,59 @@
+name: Bug report
+description: Something doesn't work the way it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to report this! The details below help a lot.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the Studio
+        2. ...
+  - type: input
+    id: version
+    attributes:
+      label: Harness Pet version
+      placeholder: "0.1.0 (installer) or a commit, if you run from source"
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version and display scaling
+      placeholder: "Windows 11 24H2, 150%, two monitors"
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Which agent is the pet following?
+      placeholder: "Claude Code in Claude Desktop, Cursor, Codex CLI, none..."
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: The last 50 or so lines of `%USERPROFILE%\.harness-pet\app.log`. Check that nothing private is in it before pasting.
+      render: text
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostic log (for mouse lag, freezes or dropped clicks)
+      description: Quit the app, launch it with HARNESS_PET_DIAG=1, reproduce the issue, then attach or paste relevant lines from %USERPROFILE%\.harness-pet\diag.log. CONTRIBUTING.md explains the PowerShell commands. Redact private paths and session details; do not attach settings or transcripts.
+      render: text
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or recording
+      description: If useful, attach a screenshot or short GIF. Hide prompts, project names and other private content first.

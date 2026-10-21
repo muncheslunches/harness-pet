@@ -1,0 +1,60 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+const on = (channel) => (cb) => ipcRenderer.on(channel, (_e, value) => cb(value));
+const send = (channel) => (...args) => ipcRenderer.send(channel, ...args);
+
+window.addEventListener('error', (e) => ipcRenderer.send('pet:input-trace', { type: 'renderer-error', message: e.message }));
+window.addEventListener('unhandledrejection', (e) => ipcRenderer.send('pet:input-trace', {
+  type: 'renderer-rejection', message: String(e.reason?.stack || e.reason),
+}));
+
+contextBridge.exposeInMainWorld('host', {
+  onInit: on('init'),
+  onPetCode: on('pet-code'),
+  onInstance: on('instance'),
+  onLink: on('link'),
+  onSessions: on('sessions'),
+  onLayout: on('layout'),
+  onCursor: on('cursor'),
+  onNotice: on('notice'),
+  onMoveState: on('move-state'),
+  onOffset: on('offset'),
+  onInteract: on('interact'),
+  onFall: on('fall'),
+  onPlay: on('play'),
+  onDance: on('dance'),
+  dance: (duration) => ipcRenderer.invoke('pet:dance', duration),
+  onAvoid: on('avoid'),
+  onSizeStep: on('size-step'),
+  rect: send('pet:rect'),
+  manifest: send('pet:manifest'),
+  hits: send('pet:hits'),
+  hold: send('pet:hold'),
+  mode: send('pet:mode'),
+  dragStart: (x, y) => ipcRenderer.send('pet:drag-start', { x, y }),
+  dragMove: (x, y) => ipcRenderer.send('pet:drag-move', { x, y }),
+  dragEnd: send('pet:drag-end'),
+  vel: send('pet:vel'),
+  moveEnd: send('pet:move-end'),
+  avoidCancel: send('pet:avoid-cancel'),
+  set: send('pet:set'),
+  action: send('pet:action'),
+  menu: send('pet:menu'),
+  refresh: send('pet:refresh'),
+  interaction: send('pet:interaction'),
+  inputTrace: send('pet:input-trace'),
+  inputLost: send('pet:input-lost'),
+  menuClosed: send('pet:menu-closed'),
+  onMenuOpen: on('menu-open'),
+  onMenuClose: on('menu-close'),
+  onScreen: on('screen'),
+  onDismiss: on('dismiss'),
+  onRefuse: on('refuse'),
+  onDuplicate: on('duplicate-effect'),
+  onRecoverMotion: on('recover-motion'),
+  passWheel: send('pet:pass-wheel'),
+  dismissed: send('pet:dismissed'),
+  menuClick: send('pet:menu-click'),
+  menuSlide: send('pet:menu-slide'),
+  copyMissing: send('pet:copy-missing'),
+});

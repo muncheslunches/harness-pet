@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'; connect-src 'none'; img-src 'self' data:" />
+  <title>Harness Pet</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="pet-col">
+    <div id="pet-wrap" class="hit">
+      <div id="pet-gurney" class="pet-gurney" hidden aria-hidden="true">
+        <svg viewBox="0 0 140 140" preserveAspectRatio="none" class="gurney-svg">
+          <defs>
+            <filter id="gurney-shadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2.5" stdDeviation="2.5" flood-opacity="0.35"/>
+            </filter>
+            <linearGradient id="metal-v" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#cbd5e1"/>
+              <stop offset="50%" stop-color="#94a3b8"/>
+              <stop offset="100%" stop-color="#64748b"/>
+            </linearGradient>
+            <linearGradient id="metal-h" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#94a3b8"/>
+              <stop offset="35%" stop-color="#f1f5f9"/>
+              <stop offset="65%" stop-color="#94a3b8"/>
+              <stop offset="100%" stop-color="#64748b"/>
+            </linearGradient>
+            <linearGradient id="mattress-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#2d525d"/>
+              <stop offset="18%" stop-color="#467c8c"/>
+              <stop offset="82%" stop-color="#467c8c"/>
+              <stop offset="100%" stop-color="#223e47"/>
+            </linearGradient>
+            <linearGradient id="pillow-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="100%" stop-color="#e2e8f0"/>
+            </linearGradient>
+          </defs>
+          <!-- Undercarriage Legs & Stabilizer -->
+          <path d="M 32 112 L 108 128 M 108 112 L 32 128" stroke="#475569" stroke-width="3" stroke-linecap="round"/>
+          <line x1="26" y1="128" x2="114" y2="128" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
+          <!-- Caster Wheels (Depth & Main) -->
+          <circle cx="42" cy="129" r="4.5" fill="#0f172a" opacity="0.6"/>
+          <circle cx="98" cy="129" r="4.5" fill="#0f172a" opacity="0.6"/>
+          <!-- Left Main Caster Wheel -->
+          <path d="M 28 125 L 28 130" stroke="#cbd5e1" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="28" cy="131" r="5.5" fill="#1e293b" stroke="#0f172a" stroke-width="1.5"/>
+          <circle cx="28" cy="131" r="2.2" fill="#cbd5e1"/>
+          <!-- Right Main Caster Wheel -->
+          <path d="M 112 125 L 112 130" stroke="#cbd5e1" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="112" cy="131" r="5.5" fill="#1e293b" stroke="#0f172a" stroke-width="1.5"/>
+          <circle cx="112" cy="131" r="2.2" fill="#cbd5e1"/>
+          <!-- Push Handle Bar at Top -->
+          <path d="M 34 18 L 34 8 Q 34 4 39 4 L 101 4 Q 106 4 106 8 L 106 18" fill="none" stroke="url(#metal-h)" stroke-width="3.5" stroke-linecap="round"/>
+          <rect x="42" y="2.5" width="18" height="3" rx="1.5" fill="#0f172a"/>
+          <rect x="80" y="2.5" width="18" height="3" rx="1.5" fill="#0f172a"/>
+          <!-- Main Stretcher Bed Perimeter Frame -->
+          <rect x="18" y="16" width="104" height="98" rx="8" fill="#1e293b" stroke="url(#metal-v)" stroke-width="3.5" filter="url(#gurney-shadow)"/>
+          <!-- Padded Mattress Cushion -->
+          <rect x="22" y="20" width="96" height="90" rx="6" fill="url(#mattress-grad)" stroke="#164e63" stroke-width="1.5"/>
+          <line x1="24" y1="46" x2="116" y2="46" stroke="#164e63" stroke-width="1" opacity="0.45"/>
+          <line x1="24" y1="74" x2="116" y2="74" stroke="#164e63" stroke-width="1" opacity="0.45"/>
+          <circle cx="48" cy="46" r="1.5" fill="#164e63" opacity="0.8"/>
+          <circle cx="92" cy="46" r="1.5" fill="#164e63" opacity="0.8"/>
+          <circle cx="48" cy="74" r="1.5" fill="#164e63" opacity="0.8"/>
+          <circle cx="92" cy="74" r="1.5" fill="#164e63" opacity="0.8"/>
+          <!-- Pillow / Headrest -->
+          <rect x="28" y="23" width="84" height="20" rx="5" fill="url(#pillow-grad)" stroke="#cbd5e1" stroke-width="1.2" filter="url(#gurney-shadow)"/>
+          <ellipse cx="70" cy="33" rx="18" ry="4" fill="#cbd5e1" opacity="0.45"/>
+          <!-- Side Guard Rails -->
+          <line x1="15" y1="36" x2="15" y2="94" stroke="url(#metal-v)" stroke-width="3" stroke-linecap="round"/>
+          <line x1="15" y1="48" x2="20" y2="48" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="15" y1="76" x2="20" y2="76" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="15" y1="94" x2="20" y2="94" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="125" y1="36" x2="125" y2="94" stroke="url(#metal-v)" stroke-width="3" stroke-linecap="round"/>
+          <line x1="120" y1="48" x2="125" y2="48" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="120" y1="76" x2="125" y2="76" stroke="#94a3b8" stroke-width="2"/>
+          <line x1="120" y1="94" x2="125" y2="94" stroke="#94a3b8" stroke-width="2"/>
+        </svg>
+      </div>
+      <div id="pet-host"></div>
+      <div id="pet-bandages" class="pet-bandages" hidden aria-hidden="true">
+        <svg viewBox="0 0 140 140" preserveAspectRatio="none" class="bandages-svg">
+          <defs>
+            <filter id="bandage-shadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2.5" stdDeviation="2.5" flood-color="#000" flood-opacity="0.45"/>
+            </filter>
+            <linearGradient id="gauze-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="30%" stop-color="#fdfbf7"/>
+              <stop offset="70%" stop-color="#f5efe2"/>
+              <stop offset="100%" stop-color="#e9dfcf"/>
+            </linearGradient>
+            <linearGradient id="clamp-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#cbd5e1"/>
+              <stop offset="50%" stop-color="#f1f5f9"/>
+              <stop offset="100%" stop-color="#94a3b8"/>
+            </linearGradient>
+          </defs>
+          <!-- Upper Chest Bandage Strap -->
+          <path d="M 14 49 C 45 47, 95 48, 126 50 L 126 60 C 95 58, 45 59, 14 61 Z" fill="url(#gauze-grad)" stroke="#dcd3c1" stroke-width="0.8" filter="url(#bandage-shadow)"/>
+          <path d="M 15 50.5 C 45 48.5, 95 49.5, 125 51.5" fill="none" stroke="#b8ad98" stroke-width="0.7" stroke-dasharray="2.5,2"/>
+          <path d="M 15 59.5 C 45 57.5, 95 58.5, 125 60.5" fill="none" stroke="#b8ad98" stroke-width="0.7" stroke-dasharray="2.5,2"/>
+          <rect x="13" y="48" width="4.5" height="13.5" rx="1.5" fill="url(#clamp-grad)" stroke="#64748b" stroke-width="0.8"/>
+          <rect x="122.5" y="49" width="4.5" height="13.5" rx="1.5" fill="url(#clamp-grad)" stroke="#64748b" stroke-width="0.8"/>
+
+          <!-- Middle Torso Bandage Strap -->
+          <path d="M 14 73 C 50 71, 90 73, 126 72 L 126 85 C 90 86, 50 84, 14 86 Z" fill="url(#gauze-grad)" stroke="#dcd3c1" stroke-width="0.8" filter="url(#bandage-shadow)"/>
+          <path d="M 15 74.5 C 50 72.5, 90 74.5, 125 73.5" fill="none" stroke="#b8ad98" stroke-width="0.7" stroke-dasharray="2.5,2"/>
+          <path d="M 15 84.5 C 50 85.5, 90 83.5, 125 84.5" fill="none" stroke="#b8ad98" stroke-width="0.7" stroke-dasharray="2.5,2"/>
+          <rect x="13" y="72" width="4.5" height="14.5" rx="1.5" fill="url(#clamp-grad)" stroke="#64748b" stroke-width="0.8"/>
+          <rect x="122.5" y="72" width="4.5" height="14.5" rx="1.5" fill="url(#clamp-grad)" stroke="#64748b" stroke-width="0.8"/>
+
+          <!-- Lower Leg Bandage Strap -->
+          <path d="M 14 98 C 45 96, 95 98, 126 97 L 126 109 C 95 110, 45 108, 14 110 Z" fill="url(#gauze-grad)" stroke="#dcd3c1" stroke-width="0.8" filter="url(#bandage-shadow)"/>
+          <path d="M 15 99.5 C 45 97.5, 95 99.5, 125 98.5" fill="none" stroke="#b8ad98" stroke-width="0.7" stroke-dasharray="2.5,2"/>
+          <path d="M 15 108.5 C 45 109.5, 95 107.5, 125 108.5" fill="none" stroke="#b8ad98" stroke-width="0.7" stroke-dasharray="2.5,2"/>
+          <rect x="13" y="97" width="4.5" height="13.5" rx="1.5" fill="url(#clamp-grad)" stroke="#64748b" stroke-width="0.8"/>
+          <rect x="122.5" y="97" width="4.5" height="13.5" rx="1.5" fill="url(#clamp-grad)" stroke="#64748b" stroke-width="0.8"/>
+          <!-- Loose Bandage Tail wrapping around -->
+          <path d="M 94 109 C 97 115, 103 116, 107 113 C 105 111, 101 110, 99 109 Z" fill="#f5efe2" stroke="#dcd3c1" stroke-width="0.7"/>
+        </svg>
+      </div>
+      <div id="hud" hidden>
+        <svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="6"/><path d="M12 6v4"/></svg>
+        <span></span>
+      </div>
+    </div>
+    <div id="bar" class="hit expanded">
+      <button id="b-0"></button>
+      <span class="sep"></span>
+      <button id="b-1"></button>
+      <span class="sep"></span>
+      <button id="b-min" title="Minimize" aria-label="Minimize">
+        <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <button id="b-bell" title="Show the bubble" aria-label="Show the bubble">
+        <svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>
+        <span class="badge" hidden></span>
+      </button>
+    </div>
+  </div>
+
+  <div id="bubble" class="hit speech" hidden>
+    <div class="tail"></div>
+    <div class="puff p1"></div>
+    <div class="puff p2"></div>
+    <div class="eyebrow"></div>
+    <div class="bubble-title"></div>
+    <div class="bubble-detail"><span class="dot"></span><span class="text"></span><button class="more" title="Show all sessions"></button></div>
+  </div>
+
+  <div id="list" class="panel hit" hidden>
+    <div class="list-head"><span class="list-title">Sessions</span><button id="list-close" type="button" title="Close sessions" aria-label="Close sessions">×</button></div>
+    <div id="rows"></div>
+  </div>
+
+  <div id="menu" hidden></div>
+
+  <script src="../shared/catalog.js"></script>
+  <script src="../shared/pet-controls.js"></script>
+  <script src="../shared/sounds.js"></script>
+  <script src="../runtime/pet-player.js"></script>
+  <script src="icons.js"></script>
+  <script src="pet-window.js"></script>
+</body>
+</html>

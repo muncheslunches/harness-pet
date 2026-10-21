@@ -1,0 +1,35 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+const call = (name) => (...args) => ipcRenderer.invoke('studio:' + name, ...args);
+
+contextBridge.exposeInMainWorld('studio', {
+  state: call('state'),
+  petCode: call('pet-code'),
+  setInstance: call('set-instance'),
+  addInstance: call('add-instance'),
+  duplicateInstance: call('duplicate-instance'),
+  removeDuplicates: call('remove-duplicates'),
+  removeInstance: call('remove-instance'),
+  moveInstance: call('move-instance'),
+  setCageEnabled: call('set-cage-enabled'),
+  play: call('play'),
+  importPets: call('import'),
+  exportPet: call('export'),
+  deletePet: call('delete-pet'),
+  prompt: call('prompt'),
+  copy: call('copy'),
+  claudeHooks: call('claude-hooks'),
+  saveLinks: call('save-links'),
+  openPath: call('open-path'),
+  press: call('press'),
+  menu: call('menu'),
+  hotkeys: call('hotkeys'),
+  setHotkey: call('set-hotkey'),
+  hotkeyEnabled: call('hotkey-enabled'),
+  hotkeysEnabled: call('hotkeys-enabled'),
+  hotkeysReset: call('hotkeys-reset'),
+  hotkeysSuspend: call('hotkeys-suspend'),
+  hotkeysResume: call('hotkeys-resume'),
+  onChanged: (cb) => ipcRenderer.on('studio:changed', () => cb()),
+  onTab: (cb) => ipcRenderer.on('studio:tab', (_e, tab, uid) => cb(tab, uid)),
+});

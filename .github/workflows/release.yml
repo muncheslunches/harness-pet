@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '22.23.3'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Exercise real Electron security and recovery boundaries
+        run: npm run test:security:electron
+
+      - name: Validate pets
+        shell: bash
+        run: for p in pets/*.pet.js; do node scripts/validate-pet.js "$p" || exit 1; done
+
+      - name: Build Windows installer
+        run: npm run dist:win
+
+      - name: Smoke test unpacked app (HARNESS_PET_MENUTEST=1)
+        run: npm run test:smoke:menu
+
+      - name: Compute SHA-256 checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem dist/Harness-Pet-Setup-*.exe | ForEach-Object {
+            $hash = (Get-FileHash -Algorithm SHA256 $_.FullName).Hash
+            "$hash  $($_.Name)" | Set-Content -Path "$($_.FullName).sha256"
+            "$hash  $($_.Name)" | Add-Content -Path dist/SHA256SUMS.txt
+          }
+          Get-Content dist/SHA256SUMS.txt
+
+      - name: Upload draft pre-release
+        uses: softprops/action-gh-release@5113cdc90fd4d541c801c55356214017bf5ae34b # v3
+        with:
+          draft: true
+          prerelease: true
+          files: |
+            dist/Harness-Pet-Setup-*.exe
+            dist/Harness-Pet-Setup-*.exe.sha256
+            dist/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

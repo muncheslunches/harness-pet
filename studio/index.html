@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'; connect-src 'none'; img-src 'self' data:" />
+  <title>Harness Pet Studio</title>
+  <link rel="stylesheet" href="studio.css" />
+</head>
+<body>
+  <aside id="side">
+    <div class="brand">
+      <img src="../assets/icon-64.png" alt="" width="32" height="32" />
+      <div><strong>Harness Pet Studio</strong><span id="app-version"></span></div>
+    </div>
+    <nav id="nav">
+      <button data-tab="pets">My pets</button>
+      <button data-tab="animations">Animations</button>
+      <button data-tab="behavior">Behavior</button>
+      <button data-tab="sounds">Sounds</button>
+      <button data-tab="hotkeys">Hotkeys</button>
+      <button data-tab="create">Create a pet</button>
+      <button data-tab="agents">Agents</button>
+      <button data-tab="about">About</button>
+    </nav>
+    <div class="side-head onscreen-head">
+      <span>On your screen</span>
+      <span class="order-arrows">
+        <button id="move-pet-up" class="arrow-btn" title="Move selected pet up" aria-label="Move pet up">▲</button>
+        <button id="move-pet-down" class="arrow-btn" title="Move selected pet down" aria-label="Move pet down">▼</button>
+      </span>
+    </div>
+    <div id="onscreen"></div>
+    <button id="add-pet" class="ghost small">+ Add a pet to the screen</button>
+    <details id="experimental">
+      <summary>Experimental</summary>
+      <div class="experimental-actions">
+        <label class="cage-toggle-label"><input type="checkbox" id="toggle-cage" /> ...cage...</label>
+        <button id="duplicate-pet" class="ghost small">Duplicate selected pet</button>
+        <button id="dismiss-duplicates" class="ghost small">Dismiss all duplicates</button>
+      </div>
+    </details>
+  </aside>
+
+  <main id="main">
+    <section data-page="pets"></section>
+    <section data-page="animations"></section>
+    <section data-page="behavior"></section>
+    <section data-page="sounds"></section>
+    <section data-page="hotkeys"></section>
+    <section data-page="create"></section>
+    <section data-page="agents"></section>
+    <section data-page="about"></section>
+  </main>
+
+  <div id="toast" hidden></div>
+
+  <script src="../shared/catalog.js"></script>
+  <script src="../shared/pet-controls.js"></script>
+  <script src="../shared/sounds.js"></script>
+  <script src="../runtime/pet-player.js"></script>
+  <script src="studio.js"></script>
+</body>
+</html>

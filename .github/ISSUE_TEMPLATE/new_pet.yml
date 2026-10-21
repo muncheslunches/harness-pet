@@ -1,0 +1,22 @@
+name: Share or request a pet
+description: Suggest a pet for the built-in collection, or ask for help making one
+labels: [pet]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Only **original** characters can be added to this repository. Pets based on characters from games, films or brands (even as fan art) can't be included, because that puts the whole project at risk of a takedown. You're welcome to make those for yourself.
+  - type: textarea
+    id: pet
+    attributes:
+      label: Describe the pet
+      description: What it looks like, how it moves, any special animations. A GIF or screenshot helps a lot.
+    validations:
+      required: true
+  - type: checkboxes
+    id: original
+    attributes:
+      label: Originality
+      options:
+        - label: This is my own original character (or I'm only asking for help making a pet)
+          required: true

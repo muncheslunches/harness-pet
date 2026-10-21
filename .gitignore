@@ -1,0 +1,21 @@
+node_modules/
+*.log
+dist/
+build/runtime/
+.npm-cache/
+.test-tmp/
+
+# local leftovers that should never be published
+/- Harness Pet Studio/
+/Microsoft/
+/assets/- old/
+*.bak
+*.lnk
+.claude/
+RELEASE_PLAN.md
+
+# Fan-made pets of other companies' characters: kept on this PC only, never published.
+# Only original pets go in the repo.
+pets/*.pet.js
+!pets/clawrk.pet.js
+!pets/cage.pet.js
