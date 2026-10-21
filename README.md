@@ -4,7 +4,7 @@
 
 Desktop pets that keep an eye on your coding agents. A pet sits on your screen, acts out what your agent is doing (thinking, working, waiting for you, done) and jumps you back into the right app with one click. It ships with **Clawrk**, a pixel crab. You can create your own pets with any coding agent, share them as single files, and run several at once, each following a different agent.
 
-**Windows 10/11 x64 · development source, preparing `0.1.0-beta.1`.** It's free and open source (MIT), with no telemetry. Electron blocks external network requests; configured buttons can open other applications or websites through Windows.
+**Windows 10/11 x64 · development source, preparing `0.1.0-beta.1`.** It's free and open source (MIT), with no telemetry. Electron blocks external network requests; configured buttons can open other applications or websites through Windows. Worried about the keyboard watcher? Don't take our word for it: [verify it yourself](#verify-it-yourself).
 
 > [!IMPORTANT]
 > **There is no verified installer yet.** This repository is work-in-progress source. A downloadable beta will be published on the [Releases](https://github.com/muncheslunches/harness-pet/releases) page only after its clean-machine, live Claude Code, upgrade/uninstall and soak checks pass. Until then you can [run it from source](#run-from-source) or build an installer yourself at your own risk. See [CONTRIBUTING.md](CONTRIBUTING.md) for development and bug-reporting guidance, and [CHANGELOG.md](CHANGELOG.md) for the known open items.
@@ -161,6 +161,36 @@ Each agent needs two things: hooks that call the bridge (`hook/harness-pet-hook.
 Pet animation code receives only the agent's status (`idle`, `thinking`, `working`, `needs-you`, or `done`), not prompt snippets, tool details, transcript paths/content, captured keys or screen images. The trusted app draws the session labels. Local `app.log` diagnostics can include installation paths, window/input metadata and errors; optional diagnostic flags add more detail. Review and redact logs, screenshots and exported evidence before sharing them.
 
 The typing consent dialog includes the in-memory screen scan. Older profiles are asked again for this version of consent; the watcher stays off until a choice is made. Disabling Watch typing cancels queued scans, discards any capture already in flight and stops the keyboard helper. A completed screenshot is never sent to pet code or written to disk by this feature.
+
+### Verify it yourself
+
+A desktop app with a global keyboard hook and screenshots can look like a keylogger, so you're right to check. Harness Pet ships as plain, readable files (no ASAR archive, no minified bundle), so you can inspect the exact code you run:
+
+- **Keyboard watcher:** [`native/key-watch.ps1`](native/key-watch.ps1) is the whole hook. It prints `t` ("a key was pressed", at most every 250 ms) and, only while Caps Lock is on, the key code. [`lib/key-watch.js`](lib/key-watch.js) is the only code that reads that output.
+- **Network blocking and sandboxing:** [`lib/security.js`](lib/security.js), [`lib/ipc-policy.js`](lib/ipc-policy.js) and [`runtime/pet-worker.js`](runtime/pet-worker.js).
+
+For an independent second opinion, use **[REA (Reverse Engineer Anything)](https://github.com/morluto/rea)**, a free, MIT-licensed, third-party tool that lets an AI coding agent (Claude Code, Codex, Cursor, Gemini CLI and others) analyze a program and show the evidence behind its answers. Harness Pet is not affiliated with REA. You need Node.js 22.19 or newer.
+
+> [!WARNING]
+> Install REA only from [github.com/morluto/rea](https://github.com/morluto/rea), [rea.tools](https://rea.tools/) or the [`rea-agents`](https://www.npmjs.com/package/rea-agents) npm package. Fake copies under similar names have shipped malware.
+
+1. Connect REA to your coding agent:
+
+   ```powershell
+   npx rea-agents@latest setup
+   ```
+
+2. Ask your agent something like this, using the folder you want to check. For an installed copy, that's `%LOCALAPPDATA%\Programs\Harness Pet\resources\app` by default. For a source checkout, use the project folder.
+
+   > Use REA to analyze the Electron app at `<folder>`. Does it send any data over the network? What does `native/key-watch.ps1` report to the app, and does anything store, log or transmit keystrokes or screenshots? Show me the evidence.
+
+3. Or skip the agent and get REA's raw static report: modules, imports and Electron boundaries, each with its evidence:
+
+   ```powershell
+   npx -y rea-agents@latest analyze-javascript-application "$env:LOCALAPPDATA\Programs\Harness Pet\resources\app" --json
+   ```
+
+The `node.exe` and Electron executables in an install come from the official Node.js and Electron releases; the build only renames the Electron executable and sets its icon and version details. REA's JavaScript analysis covers Harness Pet's own code. Inspecting those binaries needs a native decompiler such as Ghidra. Found something that contradicts this section? Please [report it privately](SECURITY.md).
 
 ### Settings recovery
 
