@@ -215,6 +215,18 @@ To restore, quit Harness Pet, make a separate copy of `%USERPROFILE%\.harness-pe
 Pet files over 1 MB are rejected. A load that exceeds five seconds or an animation frame that stops responding for two seconds has its worker terminated, with at most one outstanding frame. Studio previews show the error; on-screen pets show a notice when possible. Open Studio from the tray to hide/remove the instance or select another pet; Refresh all pets retries fixed files. Removing an on-screen instance keeps its library file. Missing files fall back to Clawrk while preserving the original reference for repair. These limits do not guarantee protection from every resource-exhaustion attempt; repeated renderer crashes stop automatic recovery after two retries in a minute.
 - **You control removal.** Session-end events remove their status record; stale records and logs may remain after interrupted sessions or uninstalling. Disconnect hooks before deleting local data as described in [Uninstall](#uninstall).
 
+## Experimental features
+
+These work, but they're rougher than the rest of the app and may change or disappear. Find them in the Studio sidebar under **Experimental**, below **Add a pet to the screen**.
+
+- **Duplicate selected pet** puts another copy of the selected pet on screen. Each duplicate starts as a copy of the original, agent and settings included, and can then be changed on its own. Press it a few times for a swarm.
+- **Dismiss all duplicates** removes every duplicate at once and leaves your original pets alone.
+- **...cage...** adds an ornate cage to the screen. Drop pets into it to cage them: caged pets stay inside, move more slowly and ignore other pets. Untick it to release them.
+- **Voice (experimental)**, one of the Claude Code buttons, opens a new Claude chat and then tries to press its voice or dictation button for you. It depends on the Claude app's layout, so it can miss.
+
+> [!WARNING]
+> **Go easy on the number of pets.** Every pet on screen, duplicates included, is its own window with its own sandboxed worker, so memory and CPU use grow with each one. A handful is fine. Dozens can make your PC sluggish, especially with animations and sounds on. If things slow down, press **Dismiss all duplicates**, or quit Harness Pet from the tray.
+
 ## Where things live
 
 | Path | What |
