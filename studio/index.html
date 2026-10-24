@@ -13,11 +13,12 @@
       <div><strong>Harness Pet Studio</strong><span id="app-version"></span></div>
     </div>
     <nav id="nav">
+      <button data-tab="general">General settings</button>
+      <button data-tab="hotkeys" class="sub">Hotkeys</button>
       <button data-tab="pets">My pets</button>
-      <button data-tab="animations">Animations</button>
-      <button data-tab="behavior">Behavior</button>
-      <button data-tab="sounds">Sounds</button>
-      <button data-tab="hotkeys">Hotkeys</button>
+      <button data-tab="animations" class="sub" title="For the pet selected under On your screen">Animations</button>
+      <button data-tab="behavior" class="sub" title="For the pet selected under On your screen">Behavior</button>
+      <button data-tab="sounds" class="sub" title="For the pet selected under On your screen">Sounds</button>
       <button data-tab="create">Create a pet</button>
       <button data-tab="agents">Agents</button>
       <button data-tab="about">About</button>
@@ -34,7 +35,7 @@
     <details id="experimental">
       <summary>Experimental</summary>
       <div class="experimental-actions">
-        <label class="cage-toggle-label"><input type="checkbox" id="toggle-cage" /> ...cage...</label>
+        <label class="cage-toggle-label" title="Drop pets in the cage to keep them there. Shake the cage (drag it back and forth quickly) to set them all free, or shake one pet to free just it."><input type="checkbox" id="toggle-cage" /> ...cage...</label>
         <button id="duplicate-pet" class="ghost small">Duplicate selected pet</button>
         <button id="dismiss-duplicates" class="ghost small">Dismiss all duplicates</button>
       </div>
@@ -42,6 +43,7 @@
   </aside>
 
   <main id="main">
+    <section data-page="general"></section>
     <section data-page="pets"></section>
     <section data-page="animations"></section>
     <section data-page="behavior"></section>

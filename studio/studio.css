@@ -18,7 +18,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
-body { display: grid; grid-template-columns: 236px 1fr; overflow: hidden; }
+body { display: grid; grid-template-columns: 264px 1fr; overflow: hidden; }
 button, input, select, textarea { font: inherit; color: inherit; }
 h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
 h2 { font-size: 15px; margin: 0 0 10px; }
@@ -37,6 +37,11 @@ a { color: var(--accent); }
 #nav button { text-align: left; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; color: var(--muted); }
 #nav button:hover { background: rgba(255, 255, 255, 0.05); color: var(--text); }
 #nav button.on { background: rgba(224, 168, 58, 0.14); color: var(--text); }
+/* a top-level page's own pages hang off it like a tree */
+#nav button.sub { position: relative; margin-left: 16px; padding: 6px 10px; font-size: 13.5px; }
+#nav button.sub::before { content: ""; position: absolute; left: -9px; top: -2px; bottom: -2px; border-left: 1px solid rgba(255, 255, 255, 0.14); }
+#nav button.sub::after { content: ""; position: absolute; left: -9px; top: 50%; width: 7px; border-top: 1px solid rgba(255, 255, 255, 0.14); }
+#nav button.sub + button:not(.sub) { margin-top: 6px; }
 .side-head { margin: 18px 6px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
 .onscreen-head { display: flex; align-items: center; justify-content: space-between; }
 .order-arrows { display: inline-flex; align-items: center; gap: 3px; }
@@ -47,7 +52,11 @@ a { color: var(--accent); }
 .inst { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 9px; border: 1px solid transparent; background: transparent; cursor: pointer; text-align: left; }
 .inst:hover { background: rgba(255, 255, 255, 0.05); }
 .inst.on { border-color: rgba(224, 168, 58, 0.5); background: rgba(224, 168, 58, 0.08); }
-.inst .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.inst-pic { position: relative; flex: none; }
+.inst-icon { width: 50px; height: 50px; display: grid; place-items: center; border-radius: 8px; background: rgba(255, 255, 255, 0.04); overflow: hidden; }
+.inst-icon .pet-canvas { image-rendering: pixelated; }
+.inst-text { min-width: 0; overflow-wrap: anywhere; }
+.inst .dot { position: absolute; right: -2px; bottom: -2px; width: 10px; height: 10px; border-radius: 50%; background: var(--muted); border: 2px solid var(--side); }
 .inst .dot.live { background: var(--ok); }
 .inst small { display: block; color: var(--muted); font-size: 11.5px; }
 .inst-row { display: flex; align-items: center; gap: 6px; }
@@ -110,6 +119,10 @@ button.btn, .btn { display: inline-flex; align-items: center; gap: 6px; padding:
 .param output { color: var(--text); min-width: 34px; }
 
 /* toggles */
+.tip { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--muted); color: var(--muted); font: italic 600 10.5px/1 Georgia, serif; cursor: help; position: relative; vertical-align: 1px; }
+.tip:hover, .tip:focus-visible { color: var(--text); border-color: var(--text); outline: none; }
+.tip::after { content: attr(data-tip); position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-30%); width: 300px; padding: 9px 11px; border-radius: 9px; background: #0f0f12; border: 1px solid var(--line); color: var(--text); font: 12.5px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; font-style: normal; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); opacity: 0; pointer-events: none; transition: opacity 0.12s; z-index: 10; }
+.tip:hover::after, .tip:focus-visible::after { opacity: 1; }
 .switch { position: relative; width: 36px; height: 20px; flex: none; }
 .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
 .switch span { position: absolute; inset: 0; background: #3a3940; border-radius: 20px; transition: background 0.15s; cursor: pointer; }
@@ -180,6 +193,21 @@ input[type="range"] { accent-color: var(--accent); }
 
 #toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #2f2e35; border: 1px solid var(--line); padding: 10px 16px; border-radius: 10px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); z-index: 10; max-width: 80vw; }
 .setting.wide { grid-column: 1 / -1; }
+
+/* Behavior page: the two everyday rows on top, then named groups with sub-groups */
+.settings.top-row { grid-template-columns: minmax(260px, 1fr) minmax(330px, 2fr); }
+@media (max-width: 860px) { .settings.top-row { grid-template-columns: 1fr; } }
+.settings-group { margin-top: 26px; }
+.group-head { margin: 0 0 10px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.settings-sub + .settings-sub { margin-top: 16px; }
+.sub-head { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+/* a setting whose options only matter while it is on: they hang off its card */
+.setting-parent { grid-column: 1 / -1; display: flex; flex-direction: column; border-radius: 10px; background: var(--card); border: 1px solid var(--line); }
+.setting-parent > .setting { border: 0; background: transparent; }
+.setting-parent > .nested { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; margin: 0 14px 14px 26px; padding-left: 12px; border-left: 2px solid rgba(224, 168, 58, 0.35); transition: opacity 0.15s; }
+.setting-parent > .nested .setting { background: var(--card-2); }
+.setting-parent > .nested.off { opacity: 0.45; border-left-color: var(--line); }
+.setting-parent > .nested.off .switch span, .setting-parent > .nested.off input, .setting-parent > .nested.off button { cursor: not-allowed; }
 .setting .pickers { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .setting .pickers select { max-width: 240px; }
 kbd { display: inline-block; padding: 1px 6px; border-radius: 5px; background: #3a3940; border: 1px solid rgba(255, 255, 255, 0.12); border-bottom-width: 2px; font: 600 12px/1.4 "Segoe UI", system-ui, sans-serif; }

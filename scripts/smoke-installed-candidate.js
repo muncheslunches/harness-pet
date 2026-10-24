@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const { spawnSync, spawn } = require('child_process');
 
 const root = path.resolve(__dirname, '..');
-const installerPath = path.join(root, 'dist', 'Harness-Pet-Setup-0.1.0-beta.1-x64.exe');
+const installerPath = path.join(root, 'dist', 'Harness-Pet-Setup-0.1.0-beta.2-x64.exe');
 
 assert.ok(fs.existsSync(installerPath), `Candidate installer not found at ${installerPath}`);
 
@@ -63,7 +63,7 @@ try {
 
   // Verify version in packaged package.json
   const pkg = JSON.parse(fs.readFileSync(path.join(unpackedDir, 'resources', 'app', 'package.json'), 'utf8'));
-  assert.equal(pkg.version, '0.1.0-beta.1', 'Packaged package.json must have candidate version 0.1.0-beta.1');
+  assert.equal(pkg.version, '0.1.0-beta.2', 'Packaged package.json must have candidate version 0.1.0-beta.2');
   console.log('PASS: Packaged contents inspection verified (version, assets, runtimes, licenses, exclusions)');
 
   // =========================================================================

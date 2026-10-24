@@ -1,6 +1,6 @@
 # Contributing to Harness Pet
 
-Bug reports, fixes, docs and original pets are welcome. This repository is development source preparing for `0.1.0-beta.1`; no installer has been released yet. Known open items are listed in [CHANGELOG.md](CHANGELOG.md).
+Bug reports, fixes, docs and original pets are welcome. This repository is development source preparing for `0.1.0-beta.2`; no installer has been released yet. Known open items are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## Ways to help
 

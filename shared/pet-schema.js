@@ -159,6 +159,13 @@
       case 'hop': return { dx: 0, dy: [0, -2, -3, -2, 0, 0, 0][Math.floor(t / 90) % 7], sy: 1 };
       case 'shake': return { dx: Math.floor(t / 70) % 2 ? 1 : -1, dy: 0, sy: 1 };
       case 'squash': return { dx: 0, dy: 0, sy: t < 300 ? 0.85 : 1 };
+      // needs you: two quick hops with a wiggle, then a beat of stillness, over and over
+      case 'alert': {
+        const f = Math.floor(t / 70) % 18;
+        return { dx: f >= 8 && f < 12 ? (f % 2 ? 1 : -1) : 0, dy: [0, -2, -3, -1, 0, -2, -3, -1][f] || 0, sy: 1 };
+      }
+      // done: a few happy hops, then it settles and holds still
+      case 'cheer': return t < 2500 ? { dx: 0, dy: [0, -2, -3, -2, 0, 0, 0][Math.floor(t / 90) % 7], sy: 1 } : { dx: 0, dy: 0, sy: 1 };
       default: return null;
     }
   }

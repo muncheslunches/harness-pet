@@ -20,9 +20,10 @@
       spec: 'The agent is thinking (a prompt was sent, or between tool calls). Pondering: looking up or around, "…" dots.' },
     { key: 'working', kind: 'status', label: 'Working', loop: true, fallback: ['idle', 'bob'],
       spec: 'A tool is running. Busy, energetic loop (typing, scuttling in place, hammering…).' },
-    { key: 'needsYou', kind: 'status', label: 'Needs you', loop: true, fallback: ['idle', 'hop'],
+    // needsYou and done fall back to different effects so a blocked agent never looks finished
+    { key: 'needsYou', kind: 'status', label: 'Needs you', loop: true, fallback: ['idle', 'alert'],
       spec: 'The agent is waiting on the user (permission prompt, question, plan to review). Attention-grabbing: hopping, a "!" mark.' },
-    { key: 'done', kind: 'status', label: 'Done', loop: true, fallback: ['idle', 'hop'],
+    { key: 'done', kind: 'status', label: 'Done', loop: true, fallback: ['idle', 'cheer'],
       spec: 'The agent finished its turn. Celebrate for about 3 s (dance, sparkles), then hold a calm happy pose.' },
 
     // ---- reactions ----
@@ -74,7 +75,7 @@
   const KINDS = ['status', 'reaction', 'rest', 'trick', 'movement'];
   const BY_KEY = Object.fromEntries(CATALOG.map((a) => [a.key, a]));
   // Built-in effects the host can apply to a fallback animation.
-  const EFFECTS = ['bob', 'hop', 'shake', 'squash'];
+  const EFFECTS = ['bob', 'hop', 'shake', 'squash', 'alert', 'cheer'];
 
   // Resolve which animation (and effect) to actually play for `key` on a pet with `have` animations.
   function resolve(key, have) {

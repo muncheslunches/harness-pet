@@ -130,14 +130,7 @@ function buildTray() {
         type: 'checkbox',
         checked: prefs.watchKeyboard === true,
         enabled: process.platform === 'win32',
-        click: (item) => {
-          if (item.checked && prefs.keyboardConsentVersion !== 1) {
-            prefs.keyboardAsked = false;
-            askAboutKeyboard().catch(() => console.warn('Typing consent could not be shown'));
-            return;
-          }
-          prefs.keyboardAsked = true; prefs.watchKeyboard = item.checked; save(); applyKeyWatch();
-        },
+        click: (item) => setWatchKeyboard(item.checked),
       },
       { type: 'separator' },
       { label: 'Quit', click: () => app.quit() },
@@ -204,11 +197,56 @@ async function askAboutKeyboard() {
   applyKeyWatch();
 }
 
+// From the tray or Studio. Turning it on the first time asks for consent instead.
+function setWatchKeyboard(on) {
+  if (on && prefs.keyboardConsentVersion !== 1) {
+    prefs.keyboardAsked = false;
+    askAboutKeyboard().catch(() => console.warn('Typing consent could not be shown')).finally(notifyStudio);
+    return;
+  }
+  prefs.keyboardAsked = true;
+  prefs.watchKeyboard = on;
+  save();
+  applyKeyWatch();
+}
+
 function applyKeyWatch() {
   if (!keys) return;
   if (prefs.watchKeyboard === true && prefs.keyboardAsked === true) keys.start();
   else { keys.stop(); avoider?.stop(); }
   if (tray) buildTray();
+  notifyStudio();
+}
+
+// ---------- general settings ----------
+
+// Starting with Windows: a source checkout has to tell Electron which app to run.
+const loginItem = () => (app.isPackaged ? {} : { path: process.execPath, args: [app.getAppPath()] });
+
+function generalSettings() {
+  let startAtLogin = false;
+  try { startAtLogin = app.getLoginItemSettings(loginItem()).openAtLogin; } catch {}
+  return {
+    muteAll: !!prefs.muteAll,
+    noDance: !!prefs.noDance,
+    verboseLogging: lifecycle.isVerbose(),
+    watchKeyboard: prefs.watchKeyboard === true && prefs.keyboardAsked === true,
+    keyboardSupported: process.platform === 'win32',
+    startAtLogin,
+    logFile: path.join(store.PATHS.data, 'app.log'),
+  };
+}
+
+function setGeneral(key, on) {
+  if (key === 'watchKeyboard') return setWatchKeyboard(on);
+  if (key === 'startAtLogin') return app.setLoginItemSettings({ ...loginItem(), openAtLogin: on });
+  prefs[key] = on;
+  save();
+  if (key === 'verboseLogging') {
+    lifecycle.setVerbose(on);
+    lifecycle.record('verbose-logging', { on });
+  }
+  if (key === 'muteAll' || key === 'noDance') host.broadcastGlobals();
 }
 
 // ---------- Studio ----------
@@ -265,6 +303,7 @@ function studioState() {
     nodePath,
     recovery: store.recoveryIssues(),
     cageEnabled: !!prefs.cageEnabled,
+    general: generalSettings(),
   };
 }
 
@@ -283,6 +322,7 @@ function wireStudio() {
   handle('remove-instance', (uid) => host.removeInstance(uid));
   handle('move-instance', (uid, dir) => host.moveInstance(uid, dir));
   handle('set-cage-enabled', (on) => host.setCageEnabled(on));
+  handle('set-general', (key, on) => { setGeneral(key, on); notifyStudio(); });
   handle('play', (uid, key) => host.play(uid, key));
   handle('import', async () => {
     const r = await dialog.showOpenDialog(studio, { title: 'Import a pet', filters: [{ name: 'Harness Pet', extensions: ['js'] }], properties: ['openFile', 'multiSelections'] });
@@ -376,6 +416,7 @@ if (!app.requestSingleInstanceLock()) {
     lifecycle.install(app, store.PATHS.data);
     lifecycle.watchWindowCount(app, BrowserWindow);
     prefs = store.loadPrefs();
+    lifecycle.setVerbose(prefs.verboseLogging);
     links = store.loadLinks();
     save();
     nodePath = findNode();
@@ -396,6 +437,15 @@ if (!app.requestSingleInstanceLock()) {
     });
     helper.start();
     wireStudio();
+
+    // A restarted GPU process can leave transparent pet windows blank until they repaint.
+    app.on('child-process-gone', (_e, details) => {
+      if (details.type === 'GPU' && details.reason !== 'clean-exit') setTimeout(() => host.repaintAll(), 1500);
+    });
+    const { screen } = require('electron');
+    for (const event of ['display-added', 'display-removed', 'display-metrics-changed']) {
+      screen.on(event, (_e, display, changed) => lifecycle.trace(event, { id: display.id, bounds: display.bounds, workArea: display.workArea, changed }));
+    }
     applyHotkeys();
     startTextAvoid();
 

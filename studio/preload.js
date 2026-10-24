@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('studio', {
   removeInstance: call('remove-instance'),
   moveInstance: call('move-instance'),
   setCageEnabled: call('set-cage-enabled'),
+  setGeneral: call('set-general'),
   play: call('play'),
   importPets: call('import'),
   exportPet: call('export'),

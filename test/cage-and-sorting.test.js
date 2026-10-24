@@ -226,3 +226,44 @@ test('caging overlap, drag-drop constraints, and avoidance', () => {
   host.setInstance(cage.uid, { visible: false });
   assert.equal(petA.caged, false);
 });
+
+test('shaking the cage frees every pet inside; shaking a caged pet frees just it', () => {
+  const rig = hostRig();
+  const prefs = {
+    instances: [store.newInstance('builtin:clawrk', null), store.newInstance('builtin:clawrk', null), store.newInstance('builtin:clawrk', null)],
+    cageEnabled: true,
+  };
+  rig.host.start({ prefs, save: () => {}, onChange: () => {}, links: { links: {} }, nodePath: 'node', menuFor: () => [], openStudio: () => {} });
+  rig.host.setCageEnabled(true);
+  const [cage, petA, petB, petC] = prefs.instances;
+  const cageRt = rig.run("live.get('cage')");
+  Object.assign(cageRt, { ready: true, rect: { x: 0, y: 0, w: 154, h: 166 }, anchor: { x: 600, y: 500 } });
+  cageRt.win.bounds = { x: 600, y: 500, width: 154, height: 166 }; // being dragged: the window is where the cage is now
+  const rts = [petA, petB, petC].map((p) => {
+    const rt = rig.run(`live.get('${p.uid}')`);
+    Object.assign(rt, { ready: true, rect: { x: 0, y: 0, w: 110, h: 110 }, anchor: { x: 620, y: 540 } });
+    return rt;
+  });
+  petA.caged = petB.caged = true;
+  Object.assign(rig.context, { cage, petA, petC });
+
+  rig.run("shaken(cage, live.get('cage'))");
+  assert.equal(petA.caged, false);
+  assert.equal(petB.caged, false);
+  const outside = (rt) => rt.anchor.x + 110 <= 600 - 20 || rt.anchor.x >= 600 + 154 + 20 || rt.anchor.y + 110 <= 500 - 20;
+  assert.ok(outside(rts[0]) && outside(rts[1]), 'freed pets land clear of the cage');
+  assert.notEqual(Math.sign(rts[0].anchor.x - 600), Math.sign(rts[1].anchor.x - 600), 'one tumbles out each side');
+
+  // a caged pet shaken while it is dragged is freed and not caught again when dropped back in
+  petA.caged = true;
+  rts[0].drag = { wx: 620, wy: 540, sx: 0, sy: 0 };
+  const before = { ...rts[0].anchor };
+  rig.run("shaken(petA, live.get(petA.uid))");
+  assert.equal(petA.caged, false);
+  assert.equal(rts[0].shakenFree, true);
+  assert.deepEqual([rts[0].anchor.x, rts[0].anchor.y], [before.x, before.y], 'it stays in your hand');
+
+  // shaking a pet that is not caged changes nothing
+  rig.run("shaken(petC, live.get(petC.uid))");
+  assert.equal(petC.caged, undefined);
+});

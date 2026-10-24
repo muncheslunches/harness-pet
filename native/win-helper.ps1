@@ -10,6 +10,9 @@
 #                   press the first button in that window whose accessible name
 #                   contains one of the names (tried in order)
 #   foreground      the window that has focus now, as a number (0 = none)
+#   foreground-app  the app that window belongs to: {"process":"claude","path":"...","title":"..."}
+#   window-shown {"process":"Antigravity"}
+#                   "ok true" while a matching app window is open on screen (not minimized or hidden)
 #   context         the text caret and window rectangle of the window you are typing in
 #   refocus 1234 5678
 #                   give focus to window 1234, but only while window 5678 has it
@@ -55,6 +58,9 @@ public static class PetWin {
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
 
     public static long Foreground() { return GetForegroundWindow().ToInt64(); }
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowThreadProcessId")] static extern uint GetWindowPid(IntPtr h, out uint pid);
+    public static uint ForegroundPid() { uint pid; GetWindowPid(GetForegroundWindow(), out pid); return pid; }
 
     // Hand focus back to the window a pet popup took it from, but only while
     // `from` (the pet) still has it: if the user has moved on, leave them there.
@@ -114,6 +120,35 @@ public static class PetWin {
             }
         }
         return caret + " " + cx + " " + cy + " " + cw + " " + ch + " " + w.L + " " + w.T + " " + (w.R - w.L) + " " + (w.B - w.T);
+    }
+
+    delegate bool EnumProc(IntPtr h, IntPtr lp);
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc cb, IntPtr lp);
+    [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr h, uint cmd);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, System.Text.StringBuilder s, int n);
+    [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out int value, int size);
+
+    // Whether one of these processes has a window open on screen: visible, not minimized,
+    // not cloaked (on another virtual desktop, or a hidden app frame), titled and not tiny.
+    public static bool AnyShown(uint[] pids, string titleContains) {
+        var want = new System.Collections.Generic.HashSet<uint>(pids);
+        string needle = (titleContains ?? "").ToLowerInvariant();
+        bool found = false;
+        EnumWindows((h, lp) => {
+            if (!IsWindowVisible(h) || IsIconic(h) || GetWindow(h, 4) != IntPtr.Zero) return true; // 4 = GW_OWNER: skip popups
+            uint pid; GetWindowPid(h, out pid);
+            if (!want.Contains(pid)) return true;
+            int cloaked;
+            if (DwmGetWindowAttribute(h, 14, out cloaked, 4) == 0 && cloaked != 0) return true; // 14 = DWMWA_CLOAKED
+            RECT r;
+            if (!GetWindowRect(h, out r) || r.R - r.L < 50 || r.B - r.T < 50) return true;
+            var title = new System.Text.StringBuilder(512);
+            GetWindowText(h, title, 512);
+            if (title.Length == 0 || (needle.Length > 0 && !title.ToString().ToLowerInvariant().Contains(needle))) return true;
+            found = true;
+            return false;
+        }, IntPtr.Zero);
+        return found;
     }
 
     public static void Combo(byte[] mods, byte key) {
@@ -235,6 +270,26 @@ while ($true) {
             }
             'context' { [Console]::Out.WriteLine("ok $([PetWin]::Context())") }
             'foreground' { [Console]::Out.WriteLine("ok $([PetWin]::Foreground())") }
+            'foreground-app' {
+                $fpid = [PetWin]::ForegroundPid()
+                $p = if ($fpid) { Get-Process -Id $fpid -ErrorAction SilentlyContinue }
+                if (-not $p) { [Console]::Out.WriteLine('ok {}'); break }
+                $path = $null
+                try { $path = $p.Path } catch {}
+                $info = @{ process = $p.ProcessName; path = $path; title = $p.MainWindowTitle } | ConvertTo-Json -Compress
+                [Console]::Out.WriteLine("ok $info")
+            }
+            'window-shown' {
+                $m = if ($parts.Count -gt 1) { $parts[1] | ConvertFrom-Json }
+                if (-not $m -or -not ($m.process -or $m.pathContains -or $m.titleContains)) { [Console]::Out.WriteLine('err no-matcher'); break }
+                $procs = @(if ($m.process) { Get-Process -Name $m.process -ErrorAction SilentlyContinue } else { Get-Process })
+                if ($m.pathContains) {
+                    $needle = ([string]$m.pathContains).ToLower()
+                    $procs = @($procs | Where-Object { $_.Path -and $_.Path.ToLower().Contains($needle) })
+                }
+                $ids = [uint32[]]@($procs | ForEach-Object { [uint32]$_.Id })
+                [Console]::Out.WriteLine("ok $(([PetWin]::AnyShown($ids, [string]$m.titleContains)).ToString().ToLower())")
+            }
             'refocus' {
                 $n = @(($parts[1] -split '\s+') | ForEach-Object { [long]$_ })
                 $from = if ($n.Count -gt 1) { $n[1] } else { 0 }

@@ -1,6 +1,6 @@
 {
   "name": "harness-pet",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "private": true,
   "description": "Desktop pets that react to your coding agents. Ships with Clawrk the crab; make, share and import your own.",
   "license": "MIT",

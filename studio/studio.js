@@ -48,11 +48,12 @@ async function copy(text, message) {
 // ---------- previews ----------
 
 const players = new Set(); // { player, key, start, dir, x, stageW, moving }
-function preview(host, code, { key = 'idle', size = 1 } = {}) {
+// fit: the share of the box the pet may fill; still: draw one frame, then leave it
+function preview(host, code, { key = 'idle', size = 1, fit = [0.7, 0.8], still = false } = {}) {
   const p = new PetPlayer(host);
-  const entry = { player: p, key, start: performance.now(), dir: 1, x: 0, size, manifest: null };
+  const entry = { player: p, key, start: performance.now(), dir: 1, x: 0, size, manifest: null, still };
   players.add(entry);
-  p.onFailure = (err) => { entry.manifest = null; host.append(h('div', { class: 'muted small', role: 'alert' }, err.message)); };
+  p.onFailure = (err) => { entry.manifest = null; if (!still) host.append(h('div', { class: 'muted small', role: 'alert' }, err.message)); };
   p.onMove = (m) => {
     // movement previews slide around inside the box and bounce off its edges
     const w = host.clientWidth;
@@ -67,14 +68,14 @@ function preview(host, code, { key = 'idle', size = 1 } = {}) {
   };
   entry.ready = p.load(code).then(({ manifest }) => {
     entry.manifest = manifest;
-    const maxW = host.clientWidth * 0.7;
-    const maxH = host.clientHeight * 0.8;
+    const maxW = host.clientWidth * fit[0];
+    const maxH = host.clientHeight * fit[1];
     const natural = { w: manifest.canvas.width * manifest.scale, h: manifest.canvas.height * manifest.scale };
     p.resize(Math.min(size, maxW / natural.w, maxH / natural.h));
     return manifest;
   });
   entry.ready.catch((err) => {
-    if (err.name === 'AbortError') return;
+    if (err.name === 'AbortError' || still) return;
     host.append(h('div', { class: 'muted small' }, 'Failed to load: ' + err.message));
   });
   return entry;
@@ -95,7 +96,8 @@ function loop(t) {
   if (t - lastFrame < 30) return;
   lastFrame = t;
   for (const e of players) {
-    if (!e.manifest) continue;
+    if (!e.manifest || e.drawn) continue;
+    if (e.still) e.drawn = true;
     const a = e.manifest.animations[e.key] ? e.key : 'idle';
     const info = e.manifest.animations[a];
     const params = {};
@@ -150,12 +152,33 @@ function setInstance(patch) {
 
 // ---------- sidebar ----------
 
+// A still of each pet on screen, kept across re-renders so the list doesn't
+// start a new pet worker every time it redraws.
+const icons = new Map(); // uid → { pet, host, entry }
+function dropIcon(uid) {
+  const icon = icons.get(uid);
+  if (icon?.entry) { icon.entry.player.destroy(); players.delete(icon.entry); }
+  icons.delete(uid);
+}
+function iconOf(inst) {
+  const had = icons.get(inst.uid);
+  if (had && had.pet === inst.pet) return had.host;
+  dropIcon(inst.uid);
+  const icon = { pet: inst.pet, host: h('span', { class: 'inst-icon' }), entry: null };
+  icons.set(inst.uid, icon);
+  codeOf(inst.pet).then((code) => {
+    if (icons.get(inst.uid) === icon) icon.entry = preview(icon.host, code, { size: 8, fit: [0.92, 0.92], still: true });
+  }).catch(() => {});
+  return icon.host;
+}
+
 function renderSide() {
   const side = document.getElementById('side');
   const scrollTop = side.scrollTop;
   const atBottom = side.scrollHeight - side.clientHeight - scrollTop < 4;
   const box = document.getElementById('onscreen');
   box.textContent = '';
+  for (const uid of [...icons.keys()]) if (!state.instances.some((i) => i.uid === uid)) dropIcon(uid);
   for (const inst of state.instances) {
     const isCage = !!inst.isCage;
     const rowChildren = [
@@ -169,8 +192,8 @@ function renderSide() {
           S.menu(inst.uid);
         },
       },
-        h('span', { class: 'dot' + (inst.visible !== false ? ' live' : '') }),
-        h('span', {}, petLabel(inst), h('small', {}, isCage ? '...cage... · secure' : `${inst.harness ? 'follows ' : ''}${linkName(inst.harness)}${inst.caged ? ' · caged' : ''}${inst.experimentalDuplicate ? ' · duplicate' : ''}${inst.visible === false ? ' · hidden' : ''}`))),
+        h('span', { class: 'inst-pic', 'aria-hidden': 'true' }, iconOf(inst), h('span', { class: 'dot' + (inst.visible !== false ? ' live' : '') })),
+        h('span', { class: 'inst-text' }, petLabel(inst), h('small', {}, isCage ? '...cage... · secure' : `${inst.harness ? 'follows ' : ''}${linkName(inst.harness)}${inst.caged ? ' · caged' : ''}${inst.experimentalDuplicate ? ' · duplicate' : ''}${inst.visible === false ? ' · hidden' : ''}`))),
     ];
     if (!isCage) {
       rowChildren.push(
@@ -218,7 +241,7 @@ document.getElementById('move-pet-down')?.addEventListener('click', async () => 
 document.getElementById('toggle-cage')?.addEventListener('change', async (e) => {
   const on = e.target.checked;
   await S.setCageEnabled(on);
-  if (on) toast('Cage enabled — put pets inside to cage them');
+  if (on) toast('Cage enabled — drop pets inside; shake the cage to free them');
   else toast('Cage disabled — pets released');
   await refresh(true);
 });
@@ -286,6 +309,40 @@ function renderTab(full) {
     requestAnimationFrame(() => { if (version === renderVersion) main.scrollTop = scrollTop; });
   }).catch((err) => { root.style.minHeight = ''; console.error(err); });
 }
+
+// ---------- General settings ----------
+
+RENDER.general = (root) => {
+  const g = state.general;
+  const row = (t, d, control, wide) => h('div', { class: 'setting' + (wide ? ' wide' : '') }, h('div', {}, h('div', { class: 't' }, t), h('div', { class: 'd' }, d)), control);
+  const sw = (key, on, extra = {}) => h('label', { class: 'switch' }, h('input', { type: 'checkbox', checked: !!on, disabled: extra.disabled, 'aria-label': extra.label,
+    onchange: (e) => S.setGeneral(key, e.target.checked).then(() => extra.done?.(e.target.checked)) }), h('span'));
+  const tip = (text) => h('span', { class: 'tip', tabindex: 0, role: 'note', 'aria-label': text, 'data-tip': text }, 'i');
+  root.append(
+    h('h1', {}, 'General settings'),
+    h('p', { class: 'lede' }, 'Settings for Harness Pet as a whole. What each pet does on its own is under My pets.'),
+    h('div', { class: 'kind-head' }, 'Pets'),
+    h('div', { class: 'settings' },
+      row('Mute all pets', 'Silences every pet at once. Each pet keeps its own volume and sound choices for when you turn this off.', sw('muteAll', g.muteAll, { label: 'Mute all pets' })),
+      row('No dancing', 'Pets never dance, alone or together.', sw('noDance', g.noDance, { label: 'No dancing' })),
+    ),
+    h('div', { class: 'kind-head' }, 'Typing'),
+    h('div', { class: 'settings' },
+      row(h('span', {}, 'Watch typing ', tip('Notices that you are typing (never what) and briefly scans the screen in memory for text. A pet standing on text you type over steps aside. With Caps Lock on, typing GO AWAY, GET OUT or MOVE sends pets off text for a while. Nothing is saved or sent anywhere.')),
+        g.keyboardSupported ? 'Pets step off text you type over. Each pet can opt out with Dodge my typing.' : 'Available on Windows only.',
+        sw('watchKeyboard', g.watchKeyboard, { label: 'Watch typing', disabled: !g.keyboardSupported })),
+    ),
+    h('div', { class: 'kind-head' }, 'App'),
+    h('div', { class: 'settings' },
+      row('Start with Windows', 'Opens Harness Pet (and your pets) when you sign in.', sw('startAtLogin', g.startAtLogin, { label: 'Start with Windows' })),
+      row('Hotkeys', 'System-wide shortcuts, on or off and which keys.', h('button', { class: 'btn small', onclick: () => show('hotkeys') }, 'Hotkeys…')),
+      row('Verbose logging', 'Writes extra detail to app.log: pets appearing, hiding and recovering, mouse input, and memory use every minute. Turn it on when a pet goes missing, then share the log in a bug report.',
+        h('div', { style: 'display:flex;gap:6px;align-items:center' },
+          h('button', { class: 'btn small', onclick: () => S.openPath(state.paths.data) }, 'Open log folder'),
+          sw('verboseLogging', g.verboseLogging, { label: 'Verbose logging', done: (on) => toast(on ? 'Verbose logging on' : 'Verbose logging off') })), true),
+    ),
+  );
+};
 
 // ---------- My pets ----------
 
@@ -463,48 +520,85 @@ RENDER.behavior = (root) => {
   const btnOptions = [...((link && link.buttons && link.buttons.length ? link.buttons : DEFAULT_BUTTONS).map((x, i) => h('option', { value: i }, x.label))), h('option', { value: 'off' }, 'Off')];
   const slotValue = (v) => (v === 'off' ? null : Number(v));
   const isSlot = (o, v) => (o.value === 'off' ? v === null : Number(o.value) === v);
+  const row = (t, d, control) => h('div', { class: 'setting' }, h('div', {}, h('div', { class: 't' }, t), h('div', { class: 'd' }, d)), control);
+  const group = (title, ...kids) => h('section', { class: 'settings-group' }, h('h2', { class: 'group-head' }, title), ...kids);
+  const sub = (title, ...kids) => h('div', { class: 'settings-sub' }, h('h3', { class: 'sub-head' }, title), h('div', { class: 'settings' }, ...kids));
+  // A setting with options that only matter while it is on: they sit inside its card and grey out while it is off.
+  const parent = (head, on, why, ...kids) => {
+    const inner = h('div', { class: 'nested' + (on ? '' : ' off'), title: on ? null : why }, ...kids);
+    if (!on) for (const el of inner.querySelectorAll('input, button, select')) el.disabled = true;
+    return h('div', { class: 'setting-parent' }, head, inner);
+  };
 
   root.append(
     h('h1', {}, `How ${petLabel(inst)} behaves`),
     h('p', { class: 'lede' }, 'These settings belong to this pet on screen; each pet can have its own. Most are also in the pet\'s right-click menu.'),
-    h('div', { class: 'settings' },
-      h('div', { class: 'setting' }, h('div', {}, h('div', { class: 't' }, 'Size'), h('div', { class: 'd' }, 'Or hover the pet and use Ctrl + mouse wheel. Bigger pets move a little slower.')),
-        slider(inst.size, 0.25, 4, 0.05, (v) => Math.round(v * 100) + '%', (v) => setInstance({ size: v }))),
-      h('div', { class: 'setting' }, h('div', {}, h('div', { class: 't' }, 'Follows'), h('div', { class: 'd' }, 'Which coding agent\'s sessions this pet reacts to.')),
-        h('select', { onchange: (e) => setInstance({ harness: e.target.value || null }) },
-          ...agentIds().map((id) => h('option', { value: id, selected: inst.harness === id }, linkName(id))),
-          h('option', { value: 'any', selected: inst.harness === 'any' }, 'Any agent'),
-          h('option', { value: '', selected: !inst.harness }, 'No agent'))),
-      h('div', { class: 'setting wide' }, h('div', {}, h('div', { class: 't' }, 'Buttons under the pet'), h('div', { class: 'd' }, link ? `First and second button, from ${link.name}. Turn both off to leave just a small bar.` : 'Pick an agent under Follows first. Turn both off to leave just a small bar.')),
-        h('div', { class: 'button-slots' },
-          h('label', {}, 'First button', h('select', { 'aria-label': 'First button', onchange: (e) => setInstance({ buttons: [slotValue(e.target.value), inst.buttons[1]] }) }, ...btnOptions.map((o) => { const c = o.cloneNode(true); if (isSlot(o, inst.buttons[0])) c.selected = true; return c; }))),
-          h('label', {}, 'Second button', h('select', { 'aria-label': 'Second button', onchange: (e) => setInstance({ buttons: [inst.buttons[0], slotValue(e.target.value)] }) }, ...btnOptions.map((o) => { const c = o.cloneNode(true); if (isSlot(o, inst.buttons[1])) c.selected = true; return c; }))))),
-      h('div', { class: 'setting' }, h('div', {}, h('div', { class: 't' }, 'Bubble'), h('div', { class: 'd' }, PetControls.hasButtons(inst) ? 'Minimized keeps a small bar. Off hides the bubble and its buttons.' : 'Automatically minimized while both buttons are off. Enable a button to use Shown.')),
-        seg(PetControls.bubbleMode(inst), [['expanded', 'Shown', !PetControls.hasButtons(inst)], ['mini', 'Minimized'], ['off', 'Off']], (v) => setInstance({ barMode: v }))),
-      toggle('wander', 'Wander around', 'Walks and plays its movement animations on its own.'),
-      toggle('anchored', 'Anchor to its bar', 'Stays on a short leash around its button bar and strolls back home.'),
-      h('div', { class: 'setting' }, h('div', {}, h('div', { class: 't' }, 'Stay on'), h('div', { class: 'd' }, 'Where the pet is allowed to roam.')),
-        seg(b.containment, [['screen', 'This screen'], ['all', 'Any screen'], ['taskbar', 'Taskbar']], (v) => setB({ containment: v }))),
-      toggle('fallWhenDropped', 'Fall when dropped', 'Let go mid-air and it drops to the bottom of the screen.'),
-      toggle('avoidCursor', 'Shy', 'Scurries away when the cursor gets close.'),
-      toggle('avoidText', 'Dodge my typing', 'Steps off text while you type over it and waits until you stop. With Caps Lock on, typing GO AWAY, GET OUT or MOVE sends every pet near text to a bare spot for 30 seconds to 5 minutes (a click calls it back).'),
-      toggle('followCursor', 'Clingy', 'Walks over toward the cursor when it\'s far away.'),
-      h('div', { class: 'setting' }, h('div', {}, h('div', { class: 't' }, 'Cursor following'), h('div', { class: 'd' }, 'With Clingy on, follow sideways or fly toward the cursor in all directions. Requires Wander around and no anchor; Taskbar keeps movement sideways.')),
-        seg(b.cursorFollowMode === 'all' ? 'all' : 'sideways', [['sideways', 'Sideways'], ['all', 'All directions']], (v) => setB({ cursorFollowMode: v }))),
-      toggle('trackCursor', 'Eyes follow the cursor', 'Pets that support it glance toward your mouse.'),
-      toggle('nap', 'Nap when idle', `Falls asleep after ${b.napMinutes} quiet minutes; hover to wake it.`),
-      toggle('social', 'Play with other pets', 'Bump, shoo and greet other pets on screen.'),
-      toggle('passThroughPets', 'Pass through other pets', 'Move through other pets without bumping or blocking them. You can still click and drag this pet.'),
-      h('div', { class: 'setting' }, h('div', {}, h('div', { class: 't' }, 'Idle tricks'), h('div', { class: 'd' }, 'How often it does tricks or wanders.')),
-        seg(b.tricks, [['off', 'Off'], ['rare', 'Rare'], ['normal', 'Normal'], ['often', 'Often']], (v) => setB({ tricks: v }))),
-      h('div', { class: 'setting' }, h('div', {}, h('div', { class: 't' }, 'Speed'), h('div', { class: 'd' }, 'How fast it moves around.')),
-        slider(b.speed, 0.4, 3, 0.1, (v) => v.toFixed(1) + '×', (v) => setB({ speed: v }))),
-      toggle('calm', 'Calm mode', 'No tricks or movement — only reacts to your agent.'),
-      h('div', { class: 'setting' }, h('div', {}, h('div', { class: 't' }, 'On screen'), h('div', { class: 'd' }, 'Hide this pet, or dismiss it in a puff of smoke.')),
+    h('div', { class: 'settings top-row' },
+      row('On screen', 'Hide this pet, or dismiss it in a puff of smoke.',
         h('div', { style: 'display:flex;gap:6px' },
           h('button', { class: 'btn small', onclick: () => setInstance({ visible: inst.visible === false }) }, inst.visible === false ? 'Show' : 'Hide'),
           h('button', { class: 'btn small dismiss-btn', onclick: () => S.removeInstance(selected) }, 'Dismiss'))),
-    )
+      row('Buttons under the pet', link ? `First and second button, from ${link.name}. Turn both off to leave just a small bar.` : 'Pick an agent under Follows first. Turn both off to leave just a small bar.',
+        h('div', { class: 'button-slots' },
+          h('label', {}, 'First button', h('select', { 'aria-label': 'First button', onchange: (e) => setInstance({ buttons: [slotValue(e.target.value), inst.buttons[1]] }) }, ...btnOptions.map((o) => { const c = o.cloneNode(true); if (isSlot(o, inst.buttons[0])) c.selected = true; return c; }))),
+          h('label', {}, 'Second button', h('select', { 'aria-label': 'Second button', onchange: (e) => setInstance({ buttons: [inst.buttons[0], slotValue(e.target.value)] }) }, ...btnOptions.map((o) => { const c = o.cloneNode(true); if (isSlot(o, inst.buttons[1])) c.selected = true; return c; }))))),
+    ),
+    group('Coming and going',
+      parent(
+        toggle('showWithAgent', 'Only show with its agent', inst.harness
+          ? 'Stays off screen until the agent your pet is attached to has a window open, is working or needs you. When that window is minimized or hidden and the agent is quiet, it waits out Leaves after, then goes. Put it on screen yourself any time; it stays until its agent\'s next turn.'
+          : 'Attach this pet to an agent under Follows first. It then appears only while that agent has a window open, is working or needs you.'),
+        !!b.showWithAgent, 'Turn on Only show with its agent first',
+        row('Leaves after', 'How long it waits once its agent is quiet and the agent\'s window is minimized or hidden.',
+          slider(b.lingerMinutes, 1, 15, 1, (v) => `${v} min`, (v) => setB({ lingerMinutes: v }))),
+        toggle('smokeOnLeave', 'Arrive and leave in a puff of smoke', 'Off: it simply appears and disappears.')),
+    ),
+    group('Agent and look',
+      h('div', { class: 'settings' },
+        row('Follows', 'Which coding agent\'s sessions this pet reacts to.',
+          h('select', { onchange: (e) => setInstance({ harness: e.target.value || null }) },
+            ...agentIds().map((id) => h('option', { value: id, selected: inst.harness === id }, linkName(id))),
+            h('option', { value: 'any', selected: inst.harness === 'any' }, 'Any agent'),
+            h('option', { value: '', selected: !inst.harness }, 'No agent'))),
+        row('Bubble', PetControls.hasButtons(inst) ? 'Minimized keeps a small bar. Off hides the bubble and its buttons.' : 'Automatically minimized while both buttons are off. Enable a button to use Shown.',
+          seg(PetControls.bubbleMode(inst), [['expanded', 'Shown', !PetControls.hasButtons(inst)], ['mini', 'Minimized'], ['off', 'Off']], (v) => setInstance({ barMode: v }))),
+        row('Size', 'Or hover the pet and use Ctrl + mouse wheel. Bigger pets move a little slower.',
+          slider(inst.size, 0.25, 4, 0.05, (v) => Math.round(v * 100) + '%', (v) => setInstance({ size: v }))),
+      ),
+    ),
+    group('Moving around',
+      sub('Getting around',
+        toggle('wander', 'Wander around', 'Walks and plays its movement animations on its own.'),
+        row('Speed', 'How fast it moves around.',
+          slider(b.speed, 0.4, 3, 0.1, (v) => v.toFixed(1) + '×', (v) => setB({ speed: v }))),
+        row('Stay on', 'Where the pet is allowed to roam.',
+          seg(b.containment, [['screen', 'This screen'], ['all', 'Any screen'], ['taskbar', 'Taskbar']], (v) => setB({ containment: v }))),
+        toggle('anchored', 'Anchor to its bar', 'Stays on a short leash around its button bar and strolls back home.'),
+        toggle('fallWhenDropped', 'Fall when dropped', 'Let go mid-air and it drops to the bottom of the screen.'),
+      ),
+      sub('Cursor and typing',
+        toggle('avoidCursor', 'Shy', 'Scurries away when the cursor gets close.'),
+        toggle('trackCursor', 'Eyes follow the cursor', 'Pets that support it glance toward your mouse.'),
+        parent(
+          toggle('followCursor', 'Clingy', 'Walks over toward the cursor when it\'s far away.'),
+          !!b.followCursor, 'Turn on Clingy first',
+          row('Cursor following', 'Follow sideways or fly toward the cursor in all directions. Requires Wander around and no anchor; Taskbar keeps movement sideways.',
+            seg(b.cursorFollowMode === 'all' ? 'all' : 'sideways', [['sideways', 'Sideways'], ['all', 'All directions']], (v) => setB({ cursorFollowMode: v })))),
+        toggle('avoidText', 'Dodge my typing', 'Steps off text while you type over it and waits until you stop. With Caps Lock on, typing GO AWAY, GET OUT or MOVE sends every pet near text to a bare spot for 30 seconds to 5 minutes (a click calls it back).'),
+      ),
+    ),
+    group('Personality',
+      sub('When idle',
+        toggle('calm', 'Calm mode', 'No tricks or movement — only reacts to your agent.'),
+        row('Idle tricks', 'How often it does tricks or wanders.',
+          seg(b.tricks, [['off', 'Off'], ['rare', 'Rare'], ['normal', 'Normal'], ['often', 'Often']], (v) => setB({ tricks: v }))),
+        toggle('nap', 'Nap when idle', `Falls asleep after ${b.napMinutes} quiet minutes; hover to wake it.`),
+      ),
+      sub('Other pets',
+        toggle('social', 'Play with other pets', 'Bump, shoo and greet other pets on screen.'),
+        toggle('passThroughPets', 'Pass through other pets', 'Move through other pets without bumping or blocking them. You can still click and drag this pet.'),
+      ),
+    ),
   );
 };
 

@@ -12,7 +12,7 @@ test('renderer recovery resets input, reloads at most twice per minute, and igno
   const wc = new EventEmitter();
   let resets = 0, reloads = 0, destroyed = false;
   wc.reload = () => reloads++;
-  const win = { webContents: wc, isDestroyed: () => destroyed };
+  const win = { webContents: wc, isDestroyed: () => destroyed, on() {} };
   context.module.exports.watchWindow(win, 'test', () => resets++);
   for (let i = 0; i < 3; i++) wc.emit('render-process-gone', {}, { reason: 'crashed', exitCode: 1 });
   assert.equal(resets, 3);

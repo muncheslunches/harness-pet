@@ -1,6 +1,6 @@
 # Signing the Windows release
 
-Planning notes checked on 2026-10-19. **Decision: the first beta (`0.1.0-beta.1`) ships unsigned**, with published SHA-256 checksums. Windows SmartScreen will warn about an unsigned installer; a checksum confirms the bytes match the release, not who published it. No signing account, certificate, credentials or build configuration has been created. The options below are for a later release.
+Planning notes checked on 2026-10-19. **Decision: the first beta (`0.1.0-beta.2`) ships unsigned**, with published SHA-256 checksums. Windows SmartScreen will warn about an unsigned installer; a checksum confirms the bytes match the release, not who published it. No signing account, certificate, credentials or build configuration has been created. The options below are for a later release.
 
 ## Choose a route
 

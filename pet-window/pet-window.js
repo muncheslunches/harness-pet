@@ -13,11 +13,14 @@ const rows = $('rows');
 const bar = $('bar');
 const badge = bar.querySelector('.badge');
 const hud = $('hud');
+const doneMark = $('done-mark');
 const menuRoot = $('menu');
 const gurney = $('pet-gurney');
 const bandages = $('pet-bandages');
 
-const player = new PetPlayer($('pet-host'));
+// A frame this late stops the worker (a pet stuck in a loop). Busy, low-memory
+// machines can stall that long too, so a stopped worker is restarted (see onFailure).
+const player = new PetPlayer($('pet-host'), { frameTimeoutMs: 4000 });
 const Cat = PetCatalog;
 const STATUS_KEY = { idle: 'idle', thinking: 'thinking', working: 'working', 'needs-you': 'needsYou', done: 'done' };
 const LABEL = { 'needs-you': 'Needs you', working: 'Working', thinking: 'Thinking', done: 'Done', idle: 'Idle' };
@@ -25,6 +28,7 @@ const TRICK_GAP = { off: null, rare: [40e3, 90e3], normal: [18e3, 45e3], often: 
 
 let inst = null;
 let link = null;
+let globals = { muteAll: false, noDance: false }; // Studio > General settings
 let manifest = null;
 let sessions = [];
 let cursor = null;
@@ -58,7 +62,7 @@ let avoiding = null; // getting out of the way of text: { phase: 'notice' | 'wal
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const has = (k) => !!(manifest && manifest.animations[k]);
-const enabled = (k) => PetControls.animationEnabled(inst, manifest, k);
+const enabled = (k) => !(k === 'dance' && globals.noDance) && PetControls.animationEnabled(inst, manifest, k);
 const durationOf = (k) => (manifest && manifest.animations[k] && manifest.animations[k].duration) || (Cat.BY_KEY[k] && Cat.BY_KEY[k].duration) || 2500;
 const activity = () => (lastActivity = now());
 const isDisabled = () => !!inst && (inst.disabledUntil === -1 || inst.disabledUntil > Date.now());
@@ -148,11 +152,17 @@ function cursorFollowVelocity(active = false) {
 }
 
 let lastFrame = 0;
+let lastAlive = 0;
 function frame(t) {
   requestAnimationFrame(frame);
   if (!manifest || inst?.visible === false || t - lastFrame < 30) return;
   const dt = t - lastFrame;
   lastFrame = t;
+  if (t - lastAlive > 5000) {
+    // the host's watchdog reloads a pet whose page stops drawing
+    lastAlive = t;
+    window.host.health({ event: 'alive', worker: !!player.worker });
+  }
   housekeeping(t);
 
   const key = pickKey(t);
@@ -215,7 +225,24 @@ player.onMove = (m) => {
   if (m.vx) dir = m.vx > 0 ? 1 : -1;
 };
 player.onDrawError = (m) => console.warn(`animation "${m.anim}" failed: ${m.message}`);
-player.onFailure = (err) => { endMove(); showNotice(err.message); };
+// The worker stopped (a frame took too long, or it crashed). Start a fresh one with
+// the same pet a few times; only then give up and say so.
+let restarts = [];
+player.onFailure = (err) => {
+  endMove();
+  window.host.health({ event: 'worker-failed', worker: false, message: err.message });
+  restarts = restarts.filter((t) => now() - t < 5 * 60e3);
+  if (!petCode || restarts.length >= 3) {
+    window.host.health({ event: 'worker-gave-up', worker: false, message: err.message });
+    return showNotice(err.message);
+  }
+  restarts.push(now());
+  const code = petCode;
+  setTimeout(() => {
+    if (code !== petCode || player.worker || dismissing) return;
+    loadPet(code).then((ok) => ok && window.host.health({ event: 'worker-restored', worker: true }));
+  }, 1000 * restarts.length);
+};
 
 function startMove(key, opts = {}) {
   dir = opts.dir || (blocked.left ? 1 : blocked.right ? -1 : Math.random() < 0.5 ? -1 : 1);
@@ -348,7 +375,7 @@ function sound(key, danceAllowed = false, deadline = Infinity) {
   clearInterval(loopTimer);
   loopTimer = null;
   if (key === 'dance' && !danceAllowed) return;
-  if (!inst || !manifest || inst.visible === false || inst.sound.muted || isDisabled() || inst.sound.volume <= 0) return;
+  if (!inst || !manifest || globals.muteAll || inst.visible === false || inst.sound.muted || isDisabled() || inst.sound.volume <= 0) return;
   if (!manifest.animations[key] && !Cat.BY_KEY[key]) return;
   const s = soundFor(key);
   const recipe = s.name && ((manifest.sounds && manifest.sounds[s.name]) || PetSounds.SOUNDS[s.name]);
@@ -370,9 +397,11 @@ function sound(key, danceAllowed = false, deadline = Infinity) {
 
 // ---------- loading ----------
 
+let petCode = null; // the code now running, to restart its worker with
 async function loadPet(code) {
   try {
     const { manifest: m, warnings } = await player.load(code);
+    petCode = code;
     manifest = m;
     document.title = PetControls.petName(inst, m);
     wrap.setAttribute('role', 'button');
@@ -381,9 +410,11 @@ async function loadPet(code) {
     player.resize(inst.size);
     window.host.manifest(m);
     reportRect();
+    return true;
   } catch (err) {
-    if (err.name === 'AbortError') return;
+    if (err.name === 'AbortError') return false;
     showNotice('This pet failed to load: ' + err.message);
+    return false;
   }
 }
 
@@ -397,6 +428,7 @@ window.host.onInit(async (data) => {
   }
   inst = data.instance;
   link = data.link;
+  if (data.globals) globals = data.globals;
   renderButtons();
   applyInstance();
   await loadPet(data.code);
@@ -427,7 +459,16 @@ window.host.onInstance((next) => {
     reportHits();
   }
   applyInstance();
-  if (before?.visible === false && next.visible !== false) sound(current.key);
+  if (before?.visible === false && next.visible !== false) {
+    document.body.classList.remove('dismissed'); // it had left in a puff of smoke
+    sound(current.key);
+  }
+});
+
+window.host.onGlobals((g) => {
+  globals = g;
+  if (globals.muteAll) { clearInterval(loopTimer); loopTimer = null; }
+  current.wanted = null; // a dance in progress stops
 });
 
 window.host.onLink((l) => {
@@ -680,6 +721,7 @@ function render() {
   badge.textContent = String(active.length);
   badge.classList.toggle('needs', needs);
   bar.classList.toggle('needs', needs);
+  doneMark.hidden = isDisabled() || !sessions.some((s) => s.unseen);
   if (!list.hidden) renderList();
 }
 
@@ -798,6 +840,13 @@ bubble.addEventListener('mouseup', (e) => {
   letGo();
 });
 bubble.querySelector('.more').addEventListener('click', () => toggleList());
+
+// The check mark sits on the pet, so keep its press from starting a drag.
+for (const type of ['pointerdown', 'mousedown']) doneMark.addEventListener(type, (e) => e.stopPropagation());
+doneMark.addEventListener('click', () => {
+  const s = sessions.find((x) => x.unseen);
+  window.host.action('jump', s ? { sessionId: s.sessionId } : {});
+});
 
 // ---------- session list ----------
 
@@ -1348,16 +1397,43 @@ window.host.onDismiss(() => {
   // so there is never a frame with neither
   smoke(wrap.getBoundingClientRect());
   document.body.classList.add('dismissed');
-  if (inst && inst.visible !== false && !inst.sound.muted && !isDisabled() && inst.sound.volume > 0) {
-    try {
-      audio = audio || new AudioContext();
-      if (audio.state === 'suspended') audio.resume();
-      PetSounds.play(audio, PetSounds.SOUNDS.poof, Math.min(1, inst.sound.volume * 1.5));
-    } catch {}
+  poof();
+});
+
+function poof() {
+  if (!inst || inst.visible === false || globals.muteAll || inst.sound.muted || isDisabled() || inst.sound.volume <= 0) return;
+  try {
+    audio = audio || new AudioContext();
+    if (audio.state === 'suspended') audio.resume();
+    PetSounds.play(audio, PetSounds.SOUNDS.poof, Math.min(1, inst.sound.volume * 1.5));
+  } catch {}
+}
+
+// "Only show with its agent": arrive and leave in a puff of smoke. The host hides
+// the window once the smoke has cleared.
+let leaving = false;
+window.host.onPresence(({ phase }) => {
+  if (dismissing) return;
+  if (phase === 'appear') {
+    leaving = false;
+    document.body.classList.remove('dismissed');
+    requestAnimationFrame(() => smoke(wrap.getBoundingClientRect(), () => {}));
+  } else if (phase === 'leave') {
+    leaving = true;
+    moving = timed = forced = null;
+    clearInterval(loopTimer);
+    closeMenu();
+    toggleList(false);
+    smoke(wrap.getBoundingClientRect(), () => { if (leaving) window.host.left(); });
+    document.body.classList.add('dismissed');
+    poof();
+  } else if (phase === 'cancel') {
+    leaving = false;
+    document.body.classList.remove('dismissed');
   }
 });
 
-function smoke(r) {
+function smoke(r, done = () => window.host.dismissed()) {
   const c = document.createElement('canvas');
   c.id = 'smoke';
   const dpr = window.devicePixelRatio || 1;
@@ -1418,7 +1494,7 @@ function smoke(r) {
     }
     if (p < 1) return requestAnimationFrame(draw);
     c.remove();
-    window.host.dismissed();
+    done();
   };
   draw();
 }

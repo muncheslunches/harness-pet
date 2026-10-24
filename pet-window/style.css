@@ -99,6 +99,31 @@ body.disabled #pet-wrap { opacity: 0.45; filter: grayscale(0.7); }
   white-space: nowrap;
 }
 #hud[hidden] { display: none; }
+
+/* a finished turn you haven't looked at yet: stays until you open the agent or switch to it */
+#done-mark {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 3;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1.5px solid rgba(0, 0, 0, 0.35);
+  border-radius: 50%;
+  background: var(--ok);
+  color: #14301a;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  animation: done-pop 0.35s var(--ease);
+}
+#done-mark[hidden] { display: none; }
+#done-mark svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+#done-mark:hover { filter: brightness(1.12); }
+#done-mark:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+@keyframes done-pop { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 #hud svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
 #hud.up svg path { animation: wheel-up 0.35s ease-out infinite; }
 #hud.down svg path { animation: wheel-down 0.35s ease-out infinite; }
