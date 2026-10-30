@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0-beta.3 — first public beta (unreleased)
+## 0.1.0-beta.4 — first public beta (unreleased)
 
 The first release with a downloadable Windows installer. It is **unsigned**; each release publishes SHA-256 checksums. See [Windows signing](docs/WINDOWS_SIGNING.md).
 
@@ -21,7 +21,7 @@ The first release with a downloadable Windows installer. It is **unsigned**; eac
 - Smoke-poof sound plays whenever a pet re-appears in a puff of smoke, and a pet is refreshed right before it re-appears.
 - When a hook event goes missing, the pet reads the agent's own transcript to see whether the turn finished, was interrupted (Esc or a declined tool), or stopped on an API error such as a usage limit. This covers Claude Code, Codex and Antigravity, and only reads the records that say how a turn ended, never what the agent read or wrote. Each transcript is parsed again only when it changes.
 - Turn-ending errors reported by hooks (such as Claude Code's `StopFailure`) show as "Usage limit reached" or "Turn error"; a failed tool call doesn't end the turn.
-- The release workflow checks that the tag, package version and installer name match, and marks only versions like `0.1.0-beta.3` as pre-releases.
+- The release workflow checks that the tag, package version and installer name match, and marks only versions like `0.1.0-beta.4` as pre-releases.
 
 ### Changed
 
@@ -31,6 +31,7 @@ The first release with a downloadable Windows installer. It is **unsigned**; eac
 - A pet keeps calling you while an agent waits for your permission, for up to an hour, even if nothing else happens meanwhile.
 - The NSIS uninstall macro attempts to remove only the uninstalling copy's Claude Code hooks before file removal and skips upgrades.
 - Legacy `builtin:clawd` / `clawd.pet.js` references migrate to Clawrk.
+- Electron 44.9.3 (from 44.9.0), which stops trusting the compromised eMudhra intermediate certificates (GHSA-jr5w-w6x2-84p9). The build tool dependency fast-uri moves to 3.1.9.
 - The README leads with installing from Releases (checksum and SmartScreen steps), and gains Troubleshooting and updated Known limitations sections.
 
 ### Fixed
