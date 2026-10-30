@@ -175,7 +175,8 @@ function iconOf(inst) {
 function renderSide() {
   const side = document.getElementById('side');
   const scrollTop = side.scrollTop;
-  const atBottom = side.scrollHeight - side.clientHeight - scrollTop < 4;
+  // only a list you scrolled to the end follows new pets down; an empty or unscrolled one starts at the top
+  const atBottom = scrollTop > 0 && side.scrollHeight - side.clientHeight - scrollTop < 4;
   const box = document.getElementById('onscreen');
   box.textContent = '';
   for (const uid of [...icons.keys()]) if (!state.instances.some((i) => i.uid === uid)) dropIcon(uid);
@@ -300,7 +301,7 @@ function renderTab(full) {
   root.style.minHeight = `${scrollTop + main.clientHeight}px`;
   stopPreviews(page(tab));
   root.textContent = '';
-  if (state.recovery?.length) root.append(h('p', { role: 'alert', class: 'lede' }, 'Some settings could not be loaded or saved. Your original files are preserved. See README > Settings recovery.'));
+  if (state.recovery?.length) root.append(h('p', { role: 'alert', class: 'lede' }, state.recovery.map((i) => i.message).join(' ') + ' See README > Settings recovery.'));
   main.scrollTop = scrollTop;
   Promise.resolve(RENDER[tab](root)).then(() => {
     if (version !== renderVersion) return;
@@ -385,6 +386,7 @@ RENDER.pets = (root) => {
               if (mine.length) {
                 selected = mine[0].uid;
                 await S.setInstance(mine[0].uid, { visible: true });
+                await S.refreshInstance(mine[0].uid);
                 return toast('Welcome back!');
               }
               selected = await S.addInstance(pet.ref);
@@ -536,7 +538,11 @@ RENDER.behavior = (root) => {
     h('div', { class: 'settings top-row' },
       row('On screen', 'Hide this pet, or dismiss it in a puff of smoke.',
         h('div', { style: 'display:flex;gap:6px' },
-          h('button', { class: 'btn small', onclick: () => setInstance({ visible: inst.visible === false }) }, inst.visible === false ? 'Show' : 'Hide'),
+          h('button', { class: 'btn small', onclick: async () => {
+            const nextVisible = inst.visible === false;
+            await setInstance({ visible: nextVisible });
+            if (nextVisible) await S.refreshInstance(selected);
+          } }, inst.visible === false ? 'Show' : 'Hide'),
           h('button', { class: 'btn small dismiss-btn', onclick: () => S.removeInstance(selected) }, 'Dismiss'))),
       row('Buttons under the pet', link ? `First and second button, from ${link.name}. Turn both off to leave just a small bar.` : 'Pick an agent under Follows first. Turn both off to leave just a small bar.',
         h('div', { class: 'button-slots' },

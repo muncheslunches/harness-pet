@@ -14,8 +14,7 @@ build/runtime/
 .claude/
 RELEASE_PLAN.md
 
-# Fan-made pets of other companies' characters: kept on this PC only, never published.
-# Only original pets go in the repo.
-pets/*.pet.js
-!pets/clawrk.pet.js
-!pets/cage.pet.js
+# Pets you make stay on your PC: everything in pets/ is ignored except Clawrk, the
+# built-in pet. To publish another original pet, add a "!/pets/<name>.pet.js" line here.
+/pets/*
+!/pets/clawrk.pet.js

@@ -1400,8 +1400,8 @@ window.host.onDismiss(() => {
   poof();
 });
 
-function poof() {
-  if (!inst || inst.visible === false || globals.muteAll || inst.sound.muted || isDisabled() || inst.sound.volume <= 0) return;
+function poof(force = false) {
+  if (!inst || (!force && inst.visible === false) || globals.muteAll || inst.sound.muted || isDisabled() || inst.sound.volume <= 0) return;
   try {
     audio = audio || new AudioContext();
     if (audio.state === 'suspended') audio.resume();
@@ -1418,6 +1418,7 @@ window.host.onPresence(({ phase }) => {
     leaving = false;
     document.body.classList.remove('dismissed');
     requestAnimationFrame(() => smoke(wrap.getBoundingClientRect(), () => {}));
+    poof(true);
   } else if (phase === 'leave') {
     leaving = true;
     moving = timed = forced = null;

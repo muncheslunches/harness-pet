@@ -1,6 +1,6 @@
 # Contributing to Harness Pet
 
-Bug reports, fixes, docs and original pets are welcome. This repository is development source preparing for `0.1.0-beta.2`; no installer has been released yet. Known open items are listed in [CHANGELOG.md](CHANGELOG.md).
+Bug reports, fixes, docs and original pets are welcome. Harness Pet is in beta; installers are published on [Releases](https://github.com/muncheslunches/harness-pet/releases). What changed and what's still open is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Ways to help
 
@@ -10,7 +10,7 @@ Bug reports, fixes, docs and original pets are welcome. This repository is devel
 
 ## Running it from source
 
-Use **Windows 10/11 x64** with [Node.js](https://nodejs.org) 22 and npm (22 is what the prepared CI workflow uses). In this project folder:
+Use **Windows 10/11 x64** with [Node.js](https://nodejs.org) 22 and npm (CI uses 22.23.3). In this project folder:
 
 ```bash
 npm ci
@@ -73,6 +73,8 @@ Harness Pet runs on people's desktops, watches the keyboard (when switched on) a
 ## Pets in this repository
 
 Only **original characters** can be added to the built-in collection. Pets based on characters from games, films, shows or brands (even as fan art) can't be included: one takedown notice could take the whole project offline. You're welcome to make those for your own use, and to share original pets in Discussions.
+
+Git ignores everything in `pets/` except Clawrk, the built-in pet, so the pets you make stay on your PC. To propose an original pet, add a `!/pets/<name>.pet.js` line to `.gitignore` in the same pull request.
 
 ## Be kind
 

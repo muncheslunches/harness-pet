@@ -11,12 +11,11 @@ function define(file) {
   return def;
 }
 
+// Only what ships: pets/ may also hold your own pets, which are not this project's to test.
 test('every bundled pet has its own lines for dodging, commands and panic', () => {
-  const dir = path.join(__dirname, '..', 'pets');
-  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.pet.js'));
-  assert.ok(files.length >= 2);
-  for (const f of files) {
-    const { manifest } = Schema.validate(define(path.join(dir, f)));
+  const root = path.join(__dirname, '..');
+  for (const f of ['pets/clawrk.pet.js', 'pet-window/cage.pet.js']) {
+    const { manifest } = Schema.validate(define(path.join(root, f)));
     for (const key of ['dodge', 'command', 'panic']) {
       assert.ok(manifest.lines[key] && manifest.lines[key].length >= 2, `${f} lines.${key}`);
       for (const line of manifest.lines[key]) assert.ok(line.length <= 28, `${f}: "${line}" is short enough for a bubble`);

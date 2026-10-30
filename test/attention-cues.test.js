@@ -10,7 +10,7 @@ const Schema = require('../shared/pet-schema');
 const store = require('../lib/store');
 
 // pet-host with a temp sessions folder and a scriptable window helper
-function hostRig() {
+function hostRig(opts = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pet-sessions-'));
   const win = { fg: null, shown: null, shownCalls: 0 };
   const clock = { now: Date.now() };
@@ -30,7 +30,7 @@ function hostRig() {
     require: (name) => {
       if (name === 'electron') return { screen: {}, ipcMain: { on() {}, handle() {} } };
       if (name === './store') return { ...store, PATHS: { ...store.PATHS, sessions: dir } };
-      if (name === './turn-check') return { finishedAt: () => null };
+      if (name === './turn-check') return { checkTurn: () => null, backgroundTasks: () => 0, ...opts.turnCheck };
       if (name === './helper') return {
         foregroundApp: async () => win.fg,
         windowShown: async () => { win.shownCalls++; return win.shown; },
@@ -155,6 +155,55 @@ test('only-show-with-agent pets stay while the agent window is open and leave on
   }
 });
 
+test('a pet you hide stays hidden while its agent window is open, until you show it', async () => {
+  const rig = hostRig();
+  try {
+    const inst = store.newInstance('builtin:clawrk', 'antigravity');
+    inst.behavior.showWithAgent = true;
+    const appeared = [];
+    rig.context.appear = (i) => appeared.push(i.uid);
+    rig.context.spawnPet = () => null;
+    rig.context.__inst = inst;
+    rig.run(`ctx = { prefs: { instances: [__inst], petSettings: {} }, links: { links: { antigravity: { window: { process: 'Antigravity' } } } },
+      save() {}, onChange() {} };
+      sessions = [];`);
+    rig.win.shown = true;
+
+    // sent away by its agent: it comes back with the window
+    rig.context.autoSet(inst.uid, { visible: false });
+    await rig.context.presenceCheck();
+    assert.deepEqual(appeared, [inst.uid]);
+
+    // hidden by you (menu, Studio, tray or the show / hide hotkey): it waits for you
+    rig.context.setInstance(inst.uid, { visible: false });
+    assert.equal(inst.userHidden, true);
+    await rig.context.presenceCheck();
+    await rig.context.presenceCheck();
+    assert.deepEqual(appeared, [inst.uid]);
+
+    rig.context.setInstance(inst.uid, { visible: true });
+    assert.equal(inst.userHidden, false);
+  } finally {
+    rig.cleanup();
+  }
+});
+
+test('a session a narrower feed relays belongs to that feed only', () => {
+  const rig = hostRig();
+  try {
+    const now = rig.clock.now;
+    // a VS Code turn: the shared Claude Code hooks and the VS Code-only bridge both write it
+    rig.writeSession({ sessionId: 'abc', state: 'working', ts: now, harness: 'claude-code' });
+    rig.writeSession({ sessionId: 'claude-code-abc', state: 'working', ts: now, harness: 'vscode' });
+    // a desktop turn: only the shared hooks see it
+    rig.writeSession({ sessionId: 'def', state: 'working', ts: now, harness: 'claude-code' });
+    const list = rig.context.readSessions().map((s) => `${s.harness}:${s.sessionId}`).sort();
+    assert.equal(list.join(' '), 'claude-code:def vscode:claude-code-abc');
+  } finally {
+    rig.cleanup();
+  }
+});
+
 test('a busy agent keeps its pet even with the window minimized', async () => {
   const rig = hostRig();
   try {
@@ -170,6 +219,117 @@ test('a busy agent keeps its pet even with the window minimized', async () => {
     rig.win.shown = false;
     await rig.context.presenceCheck();
     assert.deepEqual(left, []);
+  } finally {
+    rig.cleanup();
+  }
+});
+
+test('needs-you keeps calling you through a long wait and settles after an hour', () => {
+  const rig = hostRig();
+  try {
+    const now = rig.clock.now += 2 * 3600e3;
+    rig.writeSession({ sessionId: 'lunch', state: 'needs-you', ts: now - 40 * 60e3, harness: 'claude-code' });
+    rig.writeSession({ sessionId: 'stuck-warn', state: 'needs-you', ts: now - 61 * 60e3, harness: 'antigravity' });
+    const list = rig.context.readSessions();
+    assert.strictEqual(list.find((x) => x.sessionId === 'lunch').effective, 'needs-you');
+    assert.strictEqual(list.find((x) => x.sessionId === 'stuck-warn').effective, 'idle', 'a stale needs-you does not keep the pet warning forever');
+  } finally {
+    rig.cleanup();
+  }
+});
+
+test('usage limit detection resolves needs-you to idle immediately', () => {
+  const rig = hostRig({ turnCheck: { checkTurn: (_s, now) => ({ finished: true, at: now, state: 'idle', detail: 'Usage limit reached' }) } });
+  try {
+    const now = (rig.clock.now += 10 * 60e3);
+    rig.writeSession({ sessionId: 'usage-out', state: 'needs-you', ts: now - 1000, harness: 'antigravity' });
+    const list = rig.context.readSessions();
+    const s = list.find((x) => x.sessionId === 'usage-out');
+    assert.ok(s);
+    assert.strictEqual(s.effective, 'idle');
+    assert.strictEqual(s.detail, 'Usage limit reached');
+  } finally {
+    rig.cleanup();
+  }
+});
+
+test('appear refreshes the pet right before it re-appears', () => {
+  const rig = hostRig();
+  try {
+    const inst = store.newInstance('builtin:clawrk', 'antigravity');
+    inst.behavior.smokeOnLeave = true;
+    const refreshed = [];
+    rig.context.refreshPet = (uid, opts) => refreshed.push({ uid, opts });
+    rig.context.autoSet = () => {};
+    rig.context.__inst = inst;
+    rig.run(`ctx = { prefs: { instances: [__inst] } };
+      presenceOf(__inst.uid).autoHidden = true;`);
+    rig.context.appear(inst, null);
+    assert.equal(refreshed[0].uid, inst.uid);
+    assert.equal(refreshed[0].opts.appearWithSmoke, true);
+  } finally {
+    rig.cleanup();
+  }
+});
+
+test('a background task keeps its pet with the window minimized; an unanswered window check sends nobody away', async () => {
+  const rig = hostRig({ turnCheck: { backgroundTasks: (s) => (s.sessionId === 'bg' ? 1 : 0) } });
+  try {
+    const inst = store.newInstance('builtin:clawrk', 'claude-code');
+    inst.behavior.showWithAgent = true;
+    const left = [];
+    rig.context.leave = (i) => left.push(i.uid);
+    rig.context.__inst = inst;
+    rig.writeSession({ sessionId: 'bg', state: 'done', ts: rig.clock.now - 60e3, harness: 'claude-code' });
+    rig.run(`ctx = { prefs: { instances: [__inst] }, links: { links: { 'claude-code': { window: { process: 'claude' } } } } };
+      sessions = readSessions();
+      live.set(__inst.uid, { ready: true, win: { isDestroyed: () => false, webContents: { send() {} } } });`);
+    assert.equal(rig.run('sessions[0].effective'), 'idle');
+    rig.context.presenceOf(inst.uid).lastActive = Date.now() - 60 * 60e3;
+    rig.win.shown = false;
+    await rig.context.presenceCheck();
+    assert.deepEqual(left, [], 'the background task keeps it');
+
+    rig.run('sessions = [];');
+    rig.context.presenceOf(inst.uid).lastActive = Date.now() - 60 * 60e3; // the task finished long ago
+    rig.win.shown = null; // the helper could not tell
+    await rig.context.presenceCheck();
+    assert.deepEqual(left, []);
+    rig.win.shown = false;
+    await rig.context.presenceCheck();
+    assert.deepEqual(left, [inst.uid]);
+  } finally {
+    rig.cleanup();
+  }
+});
+
+test('show all pets leaves a pet that follows its agent to that agent\'s window', async () => {
+  const rig = hostRig();
+  try {
+    const follower = store.newInstance('builtin:clawrk', 'claude-code');
+    follower.behavior.showWithAgent = true;
+    const plain = store.newInstance('builtin:clawrk', 'claude-code');
+    const appeared = [];
+    rig.context.appear = (i) => appeared.push(i.uid);
+    rig.context.spawnPet = () => null;
+    rig.context.__pets = [follower, plain];
+    rig.run(`ctx = { prefs: { instances: __pets, petSettings: {} }, links: { links: { 'claude-code': { window: { process: 'claude' } } } },
+      save() {}, onChange() {} };
+      sessions = [];`);
+    rig.context.setAllVisible(false);
+    assert.equal(follower.userHidden, true);
+
+    rig.win.shown = false; // its agent's window is minimized
+    rig.context.setAllVisible(true); // checks presence at once
+    await new Promise((r) => setImmediate(r));
+    assert.equal(plain.visible, true);
+    assert.equal(follower.visible, false, 'it stays away while the window is minimized');
+    assert.equal(follower.userHidden, false, 'but is free to come back');
+    assert.deepEqual(appeared, []);
+
+    rig.win.shown = true;
+    await rig.context.presenceCheck();
+    assert.deepEqual(appeared, [follower.uid]);
   } finally {
     rig.cleanup();
   }

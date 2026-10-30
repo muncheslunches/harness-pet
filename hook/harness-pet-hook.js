@@ -166,6 +166,12 @@ function fromEvent(ev, event, prev) {
   // Antigravity's PostInvocation fires after every model call mid-turn; only Stop ends the turn.
   if (/postinvocation/.test(e)) return null;
   if (/sessionend|sessionstop|exit$/.test(e)) return { remove: true };
+  // A turn that ended on an error (e.g. Claude Code's StopFailure); a failed tool call is not one.
+  if (/error|fail|abort|ratelimit|quota/.test(e) && !/tool|shell|mcp/.test(e)) {
+    const msg = pick(ev, 'error.message', 'errorMessage', 'error', 'message', 'detail') || '';
+    const isUsage = /quota|rate.?limit|usage.?limit|resource.?exhausted|out.?of.?(credits|usage)|credit|billing/i.test(String(msg) + ' ' + e);
+    return { state: 'idle', detail: isUsage ? 'Usage limit reached' : 'Turn error' };
+  }
   if (/userpromptsubmit|beforesubmitprompt|beforeagent|preinvocation|promptsubmit|userprompt|preuserprompt|turnstart/.test(e)) {
     const title = titleFrom(pick(ev, 'prompt', 'userPrompt', 'user_prompt', 'message', 'input.prompt'));
     return { state: 'thinking', detail: 'Thinking', title: title || prev.title };
@@ -254,21 +260,6 @@ function readStdin() {
   });
 }
 
-function janusOwnsSession(harness) {
-  // Agent hook settings are shared by desktop/CLI and VS Code. Only Janus's
-  // additional observer should publish VS Code events while it is installed.
-  const env = process.env;
-  const vscode =
-    (harness === 'codex' && env.CODEX_INTERNAL_ORIGINATOR_OVERRIDE === 'codex_vscode') ||
-    (harness === 'claude-code' && env.CLAUDE_CODE_ENTRYPOINT === 'claude-vscode') ||
-    (harness === 'antigravity' && env.ANTIGRAVITY_VSCODE_HOST === '1' && env.ANTIGRAVITY_AUTH_SUCCESS_APP === 'vscode');
-  if (!vscode) return false;
-  try {
-    const manifest = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.harness-pet', 'vscode', 'installation.json'), 'utf8'));
-    return manifest.extension === 'harness-pet-local.janus-vscode';
-  } catch { return false; }
-}
-
 async function main() {
   const raw = await readStdin();
   let ev = {};
@@ -280,7 +271,6 @@ async function main() {
   }
 
   const harness = String(opts.harness || 'unknown').toLowerCase().replace(/[^a-z0-9-]/g, '') || 'unknown';
-  if (janusOwnsSession(harness)) return;
   const session = String(
     opts.session || pick(ev, 'session_id', 'sessionId', 'conversation_id', 'conversationId', 'thread_id', 'threadId', 'chat_id', 'taskId', 'task_id', 'id') ||
       (opts.state ? 'default' : '')

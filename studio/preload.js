@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('studio', {
   duplicateInstance: call('duplicate-instance'),
   removeDuplicates: call('remove-duplicates'),
   removeInstance: call('remove-instance'),
+  refreshInstance: call('refresh-instance'),
   moveInstance: call('move-instance'),
   setCageEnabled: call('set-cage-enabled'),
   setGeneral: call('set-general'),

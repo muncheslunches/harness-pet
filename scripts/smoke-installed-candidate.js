@@ -8,7 +8,8 @@ const assert = require('node:assert/strict');
 const { spawnSync, spawn } = require('child_process');
 
 const root = path.resolve(__dirname, '..');
-const installerPath = path.join(root, 'dist', 'Harness-Pet-Setup-0.1.0-beta.2-x64.exe');
+const VERSION = require('../package.json').version;
+const installerPath = path.join(root, 'dist', `Harness-Pet-Setup-${VERSION}-x64.exe`);
 
 assert.ok(fs.existsSync(installerPath), `Candidate installer not found at ${installerPath}`);
 
@@ -50,6 +51,8 @@ try {
   assert.ok(fs.existsSync(path.join(unpackedDir, 'resources', 'app', 'package.json')), 'App package.json must exist');
   assert.ok(fs.existsSync(path.join(unpackedDir, 'resources', 'app', 'LICENSE')), 'App LICENSE must exist');
   assert.ok(fs.existsSync(path.join(unpackedDir, 'resources', 'app', 'pets', 'clawrk.pet.js')), 'Clawrk must exist');
+  assert.deepEqual(fs.readdirSync(path.join(unpackedDir, 'resources', 'app', 'pets')), ['clawrk.pet.js'], 'Clawrk must be the only packaged pet');
+  assert.ok(fs.existsSync(path.join(unpackedDir, 'resources', 'app', 'pet-window', 'cage.pet.js')), 'The cage must ship with the app');
   assert.ok(fs.existsSync(path.join(unpackedDir, 'resources', 'app', 'hook', 'harness-pet-hook.js')), 'Hook bridge must exist');
   assert.ok(fs.existsSync(path.join(unpackedDir, 'resources', 'app', 'lib', 'claude-hooks.js')), 'Claude hook manager must exist');
   assert.ok(fs.existsSync(path.join(unpackedDir, 'resources', 'app', 'scripts', 'validate-pet.js')), 'Validator must exist');
@@ -63,7 +66,7 @@ try {
 
   // Verify version in packaged package.json
   const pkg = JSON.parse(fs.readFileSync(path.join(unpackedDir, 'resources', 'app', 'package.json'), 'utf8'));
-  assert.equal(pkg.version, '0.1.0-beta.2', 'Packaged package.json must have candidate version 0.1.0-beta.2');
+  assert.equal(pkg.version, VERSION, `Packaged package.json must have candidate version ${VERSION}`);
   console.log('PASS: Packaged contents inspection verified (version, assets, runtimes, licenses, exclusions)');
 
   // =========================================================================

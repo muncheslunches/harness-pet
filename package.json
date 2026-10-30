@@ -1,6 +1,6 @@
 {
   "name": "harness-pet",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0-beta.3",
   "private": true,
   "description": "Desktop pets that react to your coding agents. Ships with Clawrk the crab; make, share and import your own.",
   "license": "MIT",
@@ -8,7 +8,7 @@
   "scripts": {
     "start": "electron .",
     "dist:win": "electron-builder --config electron-builder.config.js --win --x64 --publish never",
-    "test": "node --test --test-concurrency=1",
+    "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
     "test:security:electron": "electron scripts/smoke-security.js",
     "test:smoke:menu": "node scripts/smoke-menutest.js",
     "validate": "node scripts/validate-pet.js",

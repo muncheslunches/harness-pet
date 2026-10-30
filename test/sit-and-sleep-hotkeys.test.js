@@ -75,6 +75,32 @@ test('menu switches to Stand up and Wake up when pet is sitting or asleep', () =
   assert.deepEqual(calls[1], [inst.uid, { asleep: false }]);
 });
 
+test('menu offers Show this pet for a hidden pet and Hide this pet otherwise', () => {
+  const inst = store.newInstance('clawrk.pet.js');
+  const prefs = { instances: [inst], hotkeys: {}, hotkeysEnabled: false };
+  const calls = [];
+  const host = {
+    manifestOf: () => null,
+    linkOf: () => null,
+    sessionsFor: () => [],
+    setInstance: (uid, patch) => calls.push([uid, patch]),
+    broadcastLinks: () => {},
+  };
+  const build = () => menus.build(inst.uid, { prefs, links: { links: {} }, host, openStudio: () => {}, quit: () => {} });
+  const labels = (items) => items.map((it) => it.label);
+
+  assert.ok(labels(build()).includes('Hide this pet'));
+  assert.ok(!labels(build()).includes('Show this pet'));
+  build().find((it) => it.label === 'Hide this pet').click();
+  assert.deepEqual(calls.pop(), [inst.uid, { visible: false }]);
+
+  inst.visible = false;
+  assert.ok(labels(build()).includes('Show this pet'));
+  assert.ok(!labels(build()).includes('Hide this pet'));
+  build().find((it) => it.label === 'Show this pet').click();
+  assert.deepEqual(calls.pop(), [inst.uid, { visible: true }]);
+});
+
 test('ipc policy and store preferences support sitting boolean', () => {
   assert.ok(policy.patch({ sitting: true }));
   assert.ok(policy.patch({ sitting: false }));

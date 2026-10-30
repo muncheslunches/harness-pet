@@ -68,7 +68,7 @@ a { color: var(--accent); }
 .btn.dismiss-btn:hover { background: #ee8a83; }
 
 /* ---- main ---- */
-#main { overflow: auto; padding: 28px 34px 60px; }
+#main { overflow: auto; overflow-anchor: none; padding: 28px 34px 60px; }
 section[data-page] { display: none; }
 section[data-page].on { display: block; }
 .row-head { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }

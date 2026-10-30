@@ -7,13 +7,14 @@ const { createRequire } = require('module');
 const store = require('../lib/store');
 const library = require('../lib/library');
 
-test('cage pet exists and is valid', () => {
-  const cageRef = library.refOf(path.join(store.PATHS.pets, 'cage.pet.js'));
-  assert.equal(cageRef, 'builtin:cage');
+test('the cage ships with the app, not in pets/, and Clawrk is the only built-in pet', () => {
   const file = library.fileOf('builtin:cage');
-  assert.ok(fs.existsSync(file));
-  const pet = library.read('builtin:cage');
-  assert.ok(pet.code.includes("id: 'cage'"));
+  assert.equal(file, path.join(__dirname, '..', 'pet-window', 'cage.pet.js'));
+  assert.equal(library.refOf(file), 'builtin:cage');
+  assert.ok(library.read('builtin:cage').code.includes("id: 'cage'"));
+  // an older checkout's pets/cage.pet.js is still the cage, never a pet of its own
+  assert.equal(library.refOf(path.join(store.PATHS.pets, 'cage.pet.js')), 'builtin:cage');
+  assert.deepEqual(library.list().filter((p) => p.builtIn).map((p) => p.ref), ['builtin:clawrk']);
 });
 
 function hostRig() {
@@ -80,7 +81,7 @@ function hostRig() {
     },
   });
   vm.runInContext(fs.readFileSync(file, 'utf8'), context);
-  return { context, handlers, host: context.module.exports, run: (c) => vm.runInContext(c, context) };
+  return { context, handlers, windows, host: context.module.exports, run: (c) => vm.runInContext(c, context) };
 }
 
 test('cage activation, positioning, and dismiss protection', () => {
@@ -266,4 +267,20 @@ test('shaking the cage frees every pet inside; shaking a caged pet frees just it
   // shaking a pet that is not caged changes nothing
   rig.run("shaken(petC, live.get(petC.uid))");
   assert.equal(petC.caged, undefined);
+});
+
+// A window opened after Quit keeps Electron's quit from finishing, and it then ignores every later Quit.
+test('once quitting, closed pets stay closed: the watchdog and a refresh open no new window', () => {
+  const rig = hostRig();
+  const prefs = { instances: [store.newInstance('builtin:clawrk', null), store.newInstance('builtin:clawrk', null)] };
+  rig.host.start({ prefs, save: () => {}, onChange: () => {}, links: { links: {} }, nodePath: 'node', menuFor: () => [], openStudio: () => {} });
+  const opened = rig.windows.length;
+  assert.equal(opened, 2);
+
+  rig.host.stopAll();
+  rig.run('watchdog()');
+  rig.host.refreshPet(prefs.instances[0].uid);
+  rig.host.setInstance(prefs.instances[1].uid, { visible: true });
+  assert.equal(rig.windows.length, opened);
+  assert.ok(rig.windows.every((w) => w.destroyed));
 });

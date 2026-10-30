@@ -62,6 +62,23 @@ public static class PetWin {
     [DllImport("user32.dll", EntryPoint = "GetWindowThreadProcessId")] static extern uint GetWindowPid(IntPtr h, out uint pid);
     public static uint ForegroundPid() { uint pid; GetWindowPid(GetForegroundWindow(), out pid); return pid; }
 
+    [DllImport("kernel32.dll")] static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
+    [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern bool QueryFullProcessImageName(IntPtr h, int flags, System.Text.StringBuilder s, ref int n);
+
+    // A process's exe path with limited query rights. Process.Path asks for more and comes
+    // back empty for some packaged apps (Claude Desktop's window process), which made
+    // a pathContains matcher miss the app's own window.
+    public static string ImagePath(uint pid) {
+        IntPtr h = OpenProcess(0x1000, false, pid); // PROCESS_QUERY_LIMITED_INFORMATION
+        if (h == IntPtr.Zero) return null;
+        try {
+            var s = new System.Text.StringBuilder(1024);
+            int n = s.Capacity;
+            return QueryFullProcessImageName(h, 0, s, ref n) ? s.ToString() : null;
+        } finally { CloseHandle(h); }
+    }
+
     // Hand focus back to the window a pet popup took it from, but only while
     // `from` (the pet) still has it: if the user has moved on, leave them there.
     public static string Refocus(IntPtr h, IntPtr from) {
@@ -173,13 +190,25 @@ if (-not (Test-Path $dll)) {
 }
 Add-Type -Path $dll
 
+function Get-ProcPath($p) {
+    $path = [PetWin]::ImagePath([uint32]$p.Id)
+    if (-not $path) { try { $path = $p.Path } catch {} }
+    $path
+}
+
+function Test-ProcPath($p, $pathContains) {
+    if (-not $pathContains) { return $true }
+    $path = Get-ProcPath $p
+    $path -and $path.ToLower().Contains(([string]$pathContains).ToLower())
+}
+
 # Matcher fields (all optional, all must match): process, pathContains, titleContains.
 function Find-AppWindow($m) {
     if (-not $m -or -not ($m.process -or $m.pathContains -or $m.titleContains)) { return $null }
     $procs = if ($m.process) { Get-Process -Name $m.process -ErrorAction SilentlyContinue } else { Get-Process }
     $procs | Where-Object {
         $_.MainWindowHandle -ne 0 -and
-        (-not $m.pathContains -or ($_.Path -and $_.Path.ToLower().Contains(([string]$m.pathContains).ToLower()))) -and
+        (Test-ProcPath $_ $m.pathContains) -and
         (-not $m.titleContains -or $_.MainWindowTitle.ToLower().Contains(([string]$m.titleContains).ToLower()))
     } | Select-Object -First 1
 }
@@ -274,8 +303,7 @@ while ($true) {
                 $fpid = [PetWin]::ForegroundPid()
                 $p = if ($fpid) { Get-Process -Id $fpid -ErrorAction SilentlyContinue }
                 if (-not $p) { [Console]::Out.WriteLine('ok {}'); break }
-                $path = $null
-                try { $path = $p.Path } catch {}
+                $path = Get-ProcPath $p
                 $info = @{ process = $p.ProcessName; path = $path; title = $p.MainWindowTitle } | ConvertTo-Json -Compress
                 [Console]::Out.WriteLine("ok $info")
             }
@@ -283,10 +311,7 @@ while ($true) {
                 $m = if ($parts.Count -gt 1) { $parts[1] | ConvertFrom-Json }
                 if (-not $m -or -not ($m.process -or $m.pathContains -or $m.titleContains)) { [Console]::Out.WriteLine('err no-matcher'); break }
                 $procs = @(if ($m.process) { Get-Process -Name $m.process -ErrorAction SilentlyContinue } else { Get-Process })
-                if ($m.pathContains) {
-                    $needle = ([string]$m.pathContains).ToLower()
-                    $procs = @($procs | Where-Object { $_.Path -and $_.Path.ToLower().Contains($needle) })
-                }
+                if ($m.pathContains) { $procs = @($procs | Where-Object { Test-ProcPath $_ $m.pathContains }) }
                 $ids = [uint32[]]@($procs | ForEach-Object { [uint32]$_.Id })
                 [Console]::Out.WriteLine("ok $(([PetWin]::AnyShown($ids, [string]$m.titleContains)).ToString().ToLower())")
             }

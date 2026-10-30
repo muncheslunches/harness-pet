@@ -163,3 +163,20 @@ test('background task and subagent task handling for all agent connections', () 
   fire(['--harness', 'generic-agent', '--event', 'TaskStart'], { session_id: 'g1', detail: 'Processing dataset' });
   assert.deepStrictEqual([read('generic-agent', 'g1').state, read('generic-agent', 'g1').detail], ['working', 'Processing dataset']);
 });
+
+test('error and rate limit hook events transition to idle with usage limit reached', () => {
+  fire(['--harness', 'claude-code'], { session_id: 'err1', hook_event_name: 'PermissionRequest', tool_name: 'Bash' });
+  assert.strictEqual(read('claude-code', 'err1').state, 'needs-you');
+
+  fire(['--harness', 'claude-code'], { session_id: 'err1', hook_event_name: 'Error', message: 'Rate limit exceeded: out of credits' });
+  assert.deepStrictEqual([read('claude-code', 'err1').state, read('claude-code', 'err1').detail], ['idle', 'Usage limit reached']);
+
+  fire(['--harness', 'claude-code'], { session_id: 'err2', hook_event_name: 'StopFailure', error: 'billing_error' });
+  assert.deepStrictEqual([read('claude-code', 'err2').state, read('claude-code', 'err2').detail], ['idle', 'Usage limit reached']);
+});
+
+test('a failed tool call keeps the turn going', () => {
+  fire(['--harness', 'claude-code'], { session_id: 'tf1', hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { description: 'Run tests' } });
+  fire(['--harness', 'claude-code'], { session_id: 'tf1', hook_event_name: 'PostToolUseFailure', tool_name: 'Bash', error: 'Exit code 1' });
+  assert.deepStrictEqual([read('claude-code', 'tf1').state, read('claude-code', 'tf1').detail], ['thinking', 'Thinking']);
+});

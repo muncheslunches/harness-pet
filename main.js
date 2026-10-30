@@ -36,17 +36,27 @@ let keys = null;
 let avoider = null;
 
 let lastSaveError = 0;
-const save = () => {
-  try { store.savePrefs(prefs); return true; }
-  catch (err) {
+let saveRetry = null;
+// A file another program holds open is usually free again within seconds, so a failed
+// save is retried once quietly; only a second failure interrupts you.
+function savePrefs(retrying) {
+  clearTimeout(saveRetry);
+  saveRetry = null;
+  try {
+    store.savePrefs(prefs);
+    if (retrying) notifyStudio();
+    return true;
+  } catch (err) {
     console.warn('Preferences could not be saved:', err.code || 'SAVE_FAILED');
-    if (Date.now() - lastSaveError > 30000) {
+    if (!retrying) saveRetry = setTimeout(() => savePrefs(true), 5000);
+    else if (Date.now() - lastSaveError > 30000) {
       lastSaveError = Date.now();
       dialog.showErrorBox('Harness Pet settings recovery', 'Your previous settings file was preserved. Check free space and permissions, then restart. See README > Settings recovery.');
     }
     return false;
   }
-};
+}
+const save = () => savePrefs(false);
 const instOf = (uid) => prefs.instances.find((i) => i.uid === uid);
 
 // Hooks run outside this app, so they need a real Node, not Electron.
@@ -64,6 +74,29 @@ function findNode() {
 
 function appIcon(size) {
   return nativeImage.createFromBitmap(icon.pixels(size, { bgra: true }), { width: size, height: size });
+}
+
+// The tray icon at every common display scale, so Windows never has to stretch a
+// 16 px bitmap; the shipped PNG stands in should drawing it ever come out empty.
+function trayImage() {
+  const img = nativeImage.createEmpty();
+  for (const scaleFactor of [1, 1.25, 1.5, 2]) {
+    const size = Math.round(16 * scaleFactor);
+    img.addRepresentation({ scaleFactor, width: size, height: size, buffer: icon.png(size) });
+  }
+  return img.isEmpty() ? nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon-32.png')) : img;
+}
+
+// A tray icon added while Explorer is still starting (at sign-in) can come up blank,
+// so the image is set again a few times after startup and whenever the display or
+// session changes.
+function keepTrayIcon() {
+  const reapply = () => { if (tray && !tray.isDestroyed()) tray.setImage(trayImage()); };
+  for (const ms of [3000, 15000, 60000]) setTimeout(reapply, ms);
+  const { screen, powerMonitor } = require('electron');
+  screen.on('display-metrics-changed', reapply);
+  screen.on('display-added', reapply);
+  for (const event of ['resume', 'unlock-screen']) powerMonitor.on(event, () => setTimeout(reapply, 2000));
 }
 
 // ---------- menus & hotkeys ----------
@@ -320,6 +353,7 @@ function wireStudio() {
   handle('duplicate-instance', (uid) => host.duplicateInstance(uid));
   handle('remove-duplicates', () => host.removeDuplicates());
   handle('remove-instance', (uid) => host.removeInstance(uid));
+  handle('refresh-instance', (uid) => host.refreshPet(uid));
   handle('move-instance', (uid, dir) => host.moveInstance(uid, dir));
   handle('set-cage-enabled', (on) => host.setCageEnabled(on));
   handle('set-general', (key, on) => { setGeneral(key, on); notifyStudio(); });
@@ -468,7 +502,8 @@ if (!app.requestSingleInstanceLock()) {
       }, 6000);
     }
 
-    tray = new Tray(appIcon(16));
+    tray = new Tray(trayImage());
+    keepTrayIcon();
     tray.setToolTip('Harness Pet');
     tray.on('click', () => openStudio());
     buildTray();
@@ -502,6 +537,9 @@ if (!app.requestSingleInstanceLock()) {
     if (avoider) avoider.stop();
     helper.stop();
     host.stopAll();
+    // Electron ignores every later Quit while one is unfinished, so a window that
+    // won't close (a frozen Studio) would leave the app running for good.
+    setTimeout(() => app.exit(0), 5000);
   });
 }
 

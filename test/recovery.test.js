@@ -60,6 +60,27 @@ test('backup, temporary-write and rename failures preserve originals and clean t
   }
 });
 
+test('a file Windows briefly locks is saved on retry; a failed save clears once one succeeds', t => {
+  const root = fixture(t);
+  fs.writeFileSync(store.PATHS.prefs, '{"instances":[]}');
+  const prefs = store.loadPrefs();
+  const rename = fs.renameSync;
+  let refusals = 2;
+  fs.renameSync = (...args) => {
+    if (refusals-- > 0) throw Object.assign(new Error('synthetic lock'), { code: 'EPERM' });
+    return rename(...args);
+  };
+  try { store.savePrefs(prefs); } finally { fs.renameSync = rename; }
+  assert.equal(store.recoveryIssues().some(i => i.file === store.PATHS.prefs), false);
+
+  fs.renameSync = () => { throw Object.assign(new Error('synthetic lock'), { code: 'EPERM' }); };
+  try { assert.throws(() => store.savePrefs(prefs), /synthetic lock/); } finally { fs.renameSync = rename; }
+  assert.match(store.recoveryIssues().find(i => i.file === store.PATHS.prefs).message, /could not be saved \(EPERM\)/);
+  store.savePrefs(prefs);
+  assert.equal(store.recoveryIssues().some(i => i.file === store.PATHS.prefs), false, 'the warning goes away');
+  assert.equal(fs.readdirSync(root).some(n => n.includes('.recovery-')), false, 'a valid file is not copied as a recovery file');
+});
+
 test('unreadable settings block replacement and external edits are not overwritten', t => {
   const root = fixture(t);
   const original = '{"instances":[]}';

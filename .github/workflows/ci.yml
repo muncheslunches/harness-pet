@@ -33,7 +33,7 @@ jobs:
 
       - name: Validate pets
         shell: bash
-        run: for p in pets/*.pet.js; do node scripts/validate-pet.js "$p" || exit 1; done
+        run: for p in pets/*.pet.js pet-window/cage.pet.js; do node scripts/validate-pet.js "$p" || exit 1; done
 
       - name: Build unpacked distribution
         run: npm run dist:win

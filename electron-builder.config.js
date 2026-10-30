@@ -10,7 +10,7 @@ module.exports = {
   // ordinary files, rather than paths inside an Electron-only ASAR archive.
   asar: false,
   files: [
-    'main.js', 'lib/**', 'native/**', 'pet-window/**', 'pets/clawrk.pet.js', 'pets/cage.pet.js',
+    'main.js', 'lib/**', 'native/**', 'pet-window/**', 'pets/clawrk.pet.js',
     'runtime/**', 'shared/**', 'studio/**', 'hook/**', 'docs/**',
     '!docs/releases/**', '!**/*.bak',
     'scripts/validate-pet.js', 'assets/*.png', 'LICENSE', 'README.md',
