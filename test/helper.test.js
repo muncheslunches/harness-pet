@@ -46,3 +46,20 @@ test('failed helper spawn and shutdown both settle queued actions', async () => 
   helper.stop();
   assert.equal(await second, 'err helper-stopped');
 });
+
+test('restack sends only window handles and reads back how many windows moved', async () => {
+  const { helper, children } = rig();
+  assert.equal(await helper.restack([]), 0, 'nothing to check spawns no helper');
+  assert.equal(children.length, 0);
+  const sent = [];
+  helper.start();
+  children[0].stdin.write = (line) => sent.push(line);
+  const moved = helper.restack(['123', null, '45; rm', 678]);
+  children[0].stdout.emit('data', 'ready\nok 2\n');
+  assert.equal(await moved, 2);
+  assert.deepEqual(sent, ['restack 123 678\n']);
+  const failed = helper.restack(['123']);
+  children[0].stdout.emit('data', 'err boom\n');
+  assert.equal(await failed, 0);
+  helper.stop();
+});

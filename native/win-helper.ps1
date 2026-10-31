@@ -16,6 +16,9 @@
 #   context         the text caret and window rectangle of the window you are typing in
 #   refocus 1234 5678
 #                   give focus to window 1234, but only while window 5678 has it
+#   restack 1234 5678
+#                   put those always-on-top windows back in front if ordinary windows got
+#                   above them; answers how many it moved
 # Each command answers one line: "ok ..." or "err ...".
 
 $ErrorActionPreference = 'Stop'
@@ -166,6 +169,40 @@ public static class PetWin {
             return false;
         }, IntPtr.Zero);
         return found;
+    }
+
+    [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] static extern IntPtr GetWindowLongPtr(IntPtr h, int index);
+    [DllImport("shell32.dll")] static extern int SHQueryUserNotificationState(out int state);
+
+    static bool IsTopmost(IntPtr h) { return ((long)GetWindowLongPtr(h, -20) & 0x8) != 0; } // GWL_EXSTYLE, WS_EX_TOPMOST
+
+    // Windows can strand always-on-top windows under ordinary ones: the flag stays set, yet
+    // every app you switch to lands in front of them. Seen as a visible, uncloaked window
+    // without the flag somewhere above this one.
+    static bool Sunk(IntPtr h) {
+        IntPtr above = GetWindow(h, 3); // GW_HWNDPREV walks toward the front
+        for (int n = 0; above != IntPtr.Zero && n < 2048; n++, above = GetWindow(above, 3)) {
+            if (IsTopmost(above) || !IsWindowVisible(above)) continue;
+            int cloaked;
+            if (DwmGetWindowAttribute(above, 14, out cloaked, 4) == 0 && cloaked != 0) continue; // 14 = DWMWA_CLOAKED
+            return true;
+        }
+        return false;
+    }
+
+    // Puts each stranded always-on-top window back in front without activating it, and
+    // returns how many it moved. Leaves a full-screen game, video or presentation alone.
+    public static int Restack(long[] hwnds) {
+        int state;
+        if (SHQueryUserNotificationState(out state) == 0 && state >= 2 && state <= 4) return 0; // busy, Direct3D, presentation
+        int moved = 0;
+        foreach (long v in hwnds) {
+            IntPtr h = new IntPtr(v);
+            if (!IsWindow(h) || !IsWindowVisible(h) || !IsTopmost(h) || !Sunk(h)) continue;
+            if (SetWindowPos(h, new IntPtr(-1), 0, 0, 0, 0, 0x13)) moved++; // HWND_TOPMOST; NOSIZE|NOMOVE|NOACTIVATE
+        }
+        return moved;
     }
 
     public static void Combo(byte[] mods, byte key) {
@@ -319,6 +356,10 @@ while ($true) {
                 $n = @(($parts[1] -split '\s+') | ForEach-Object { [long]$_ })
                 $from = if ($n.Count -gt 1) { $n[1] } else { 0 }
                 [Console]::Out.WriteLine("ok refocus $([PetWin]::Refocus([IntPtr]::new($n[0]), [IntPtr]::new($from)))")
+            }
+            'restack' {
+                $ids = [long[]]@(if ($parts.Count -gt 1) { ($parts[1] -split '\s+') | ForEach-Object { [long]$_ } })
+                [Console]::Out.WriteLine("ok $([PetWin]::Restack($ids))")
             }
             'ping' { [Console]::Out.WriteLine('ok pong') }
             default { [Console]::Out.WriteLine("err unknown-command $($parts[0])") }
