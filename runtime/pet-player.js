@@ -93,6 +93,8 @@ class PetPlayer {
     if (m.type === 'frame-done' && this.framePending?.id === m.frame) {
       clearTimeout(this.framePending.timer);
       this.framePending = null;
+      // how many frames in a row have looked exactly like the one on screen
+      this.unchangedFrames = m.changed === false ? (this.unchangedFrames || 0) + 1 : 0;
     } else if (m.type === 'move' && Number.isFinite(m.vx) && Number.isFinite(m.vy) && this.onMove) this.onMove({ ...m, vx: Math.max(-10000, Math.min(10000, m.vx)), vy: Math.max(-10000, Math.min(10000, m.vy)) });
     else if (m.type === 'draw-error' && this.onDrawError) this.onDrawError({ anim: String(m.anim).slice(0, 41), message: String(m.message).slice(0, 500) });
   }

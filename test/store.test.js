@@ -2,7 +2,26 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const store = require('../lib/store');
+
+test('only temporary session files over an hour old get cleared', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hp-sweep-'));
+  try {
+    const old = new Date(Date.now() - 2 * 3600e3);
+    for (const name of ['stale.json.123.tmp', 'stale.json']) {
+      fs.writeFileSync(path.join(dir, name), '{}');
+      fs.utimesSync(path.join(dir, name), old, old);
+    }
+    fs.writeFileSync(path.join(dir, 'fresh.json.456.tmp'), '{}');
+    store.sweepSessionTemps(dir);
+    assert.deepEqual(fs.readdirSync(dir).sort(), ['fresh.json.456.tmp', 'stale.json']);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test('a new pet on screen follows no agent and shows both default buttons', () => {
   const inst = store.newInstance('C:\pets\sun.pet.js');

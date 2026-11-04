@@ -16,6 +16,7 @@ const menus = require('./lib/menus');
 const hotkeys = require('./lib/hotkeys');
 const lifecycle = require('./lib/lifecycle');
 const keyWatch = require('./lib/key-watch');
+const rest = require('./lib/rest');
 const textAvoid = require('./lib/text-avoid');
 const screenScan = require('./lib/screen-scan');
 const security = require('./lib/security');
@@ -262,6 +263,10 @@ function generalSettings() {
   return {
     muteAll: !!prefs.muteAll,
     noDance: !!prefs.noDance,
+    idleRest: prefs.idleRest !== false,
+    idleSlowMinutes: prefs.idleSlowMinutes || rest.DEFAULT_SLOW_MINUTES,
+    idleSleepMinutes: prefs.idleSleepMinutes || rest.DEFAULT_SLEEP_MINUTES,
+    pauseFullscreen: !!prefs.pauseFullscreen,
     verboseLogging: lifecycle.isVerbose(),
     watchKeyboard: prefs.watchKeyboard === true && prefs.keyboardAsked === true,
     keyboardSupported: process.platform === 'win32',
@@ -280,6 +285,8 @@ function setGeneral(key, on) {
     lifecycle.record('verbose-logging', { on });
   }
   if (key === 'muteAll' || key === 'noDance') host.broadcastGlobals();
+  if (key.startsWith('idle')) host.restCheck();
+  if (key === 'pauseFullscreen') host.fullscreenCheck();
 }
 
 // ---------- Studio ----------

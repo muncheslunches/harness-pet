@@ -37,6 +37,20 @@ let offset = { x: 0, y: 0 };
 let work = { x: 0, y: 0, width: screen.availWidth, height: screen.availHeight };
 let margin = 380;
 
+// ---------- redraw rate and rest ----------
+
+const FRAME_MS = 30; // the full rate
+// The last frames came out identical, so nothing is lost by looking less often. A pet's
+// idle animation changes only a couple of times a second; real motion changes every
+// frame and so never slows down.
+const STILL_MS = 100;
+const STILLER_MS = 200;
+const NAP_MS = 125; // asleep or napping: a slow animation
+const OFF_MS = 1000; // disabled or hidden: nothing to animate
+const REST_MS = [FRAME_MS, 200, 1000]; // by rest level (see lib/rest.js)
+const REST_RATE = [1, 0.25, 0.25]; // how fast animations play at that level
+let restLevel = 0;
+
 // ---------- animation state ----------
 
 const now = () => performance.now();
@@ -105,6 +119,7 @@ function pickKey(t) {
   }
   if (inst && inst.sitting) return 'idle';
   if (inst && inst.asleep) return 'sleep';
+  if (restLevel === 2) return 'sleep';
   if (forced && t < forced.until) return forced.key;
   if (timed && t < timed.until) return timed.key;
   if (moving) return moving.key;
@@ -151,10 +166,64 @@ function cursorFollowVelocity(active = false) {
   return vx || vy ? { vx, vy } : null;
 }
 
+const animationRate = () => Math.min(inst?.asleep ? 0.1 : 1, REST_RATE[restLevel]);
+
+// How long until the next frame. The full rate whenever you could be handling this pet
+// or something on screen is moving; slower whenever that couldn't show.
+function frameGap() {
+  if (!inst || !manifest) return STILL_MS;
+  if (inst.visible === false) return OFF_MS;
+  if (dragging || falling || moving || bubbleDrag || !menuRoot.hidden) return FRAME_MS;
+  if (restLevel) return REST_MS[restLevel];
+  if (insidePetCol(40)) return FRAME_MS;
+  if (isDisabled()) return OFF_MS;
+  if (inst.asleep || sleeping) return NAP_MS;
+  if (player.unchangedFrames >= 30) return STILLER_MS;
+  return player.unchangedFrames >= 2 ? STILL_MS : FRAME_MS;
+}
+
+// Slower than the display, a timer wakes this page less than an animation frame would.
+let frameTimer = 0;
+function scheduleFrame() {
+  const gap = frameGap();
+  if (gap <= FRAME_MS) requestAnimationFrame(frame);
+  else frameTimer = setTimeout(() => frame(now()), gap);
+}
+
+function hurryFrame() {
+  if (!frameTimer) return;
+  clearTimeout(frameTimer);
+  frameTimer = 0;
+  requestAnimationFrame(frame);
+}
+
+function setRest(level) {
+  if (level === restLevel) return;
+  const t = now();
+  const wakes = level < 2 && (restLevel === 2 || (sleeping && !level));
+  const before = animationRate();
+  restLevel = level;
+  current.since = t - (t - current.since) * before / animationRate(); // the animation carries on from the same moment
+  document.body.classList.toggle('resting', level > 0);
+  if (!level) {
+    activity();
+    sleeping = false;
+    // you're back: be ready before the next sound rather than because of it
+    if (audio?.state === 'suspended') audio.resume().catch(() => {});
+  }
+  if (wakes && !inst?.asleep && !inst?.sitting && !isDisabled() && !dragging) {
+    timed = { key: 'wake', until: t + durationOf('wake'), fromRest: true };
+  }
+  hurryFrame();
+}
+window.host.onRest(setRest);
+
 let lastFrame = 0;
 let lastAlive = 0;
+let lastBar = 0;
 function frame(t) {
-  requestAnimationFrame(frame);
+  frameTimer = 0;
+  scheduleFrame();
   if (!manifest || inst?.visible === false || t - lastFrame < 30) return;
   const dt = t - lastFrame;
   lastFrame = t;
@@ -163,7 +232,13 @@ function frame(t) {
     lastAlive = t;
     window.host.health({ event: 'alive', worker: !!player.worker });
   }
+  // the host only repeats a cursor position that hasn't changed once a second, but the bar's timing can't wait that long
+  if (t - lastBar >= 100) {
+    lastBar = t;
+    updateBar();
+  }
   housekeeping(t);
+  restAudio(t);
 
   const key = pickKey(t);
   if (key !== current.wanted) {
@@ -181,10 +256,14 @@ function frame(t) {
           if (audible && now() < deadline && current === dance && pickKey(now()) === 'dance') sound('dance', true, deadline);
         }).catch((err) => console.warn('group dance:', err));
       }
+    } else if ((key === 'sleep' && restLevel === 2) || (key === 'wake' && timed?.fromRest)) {
+      // dozing off because you stepped away is not an event worth a sound
+      clearInterval(loopTimer);
+      loopTimer = null;
     } else sound(key);
   }
   const top = sessions.find((s) => s.effective !== 'idle');
-  const animationRate = inst.asleep ? 0.1 : 1;
+  const rate = animationRate();
   const speedMul = inst?.caged ? 0.4 : 1;
   if (inst?.caged || inst?.isCage) {
     if (!bar.hidden) bar.hidden = true;
@@ -193,8 +272,8 @@ function frame(t) {
   player.draw({
     anim: current.key,
     effect: current.effect,
-    t: isDisabled() ? 0 : (t - current.since) * animationRate,
-    dt: dt * animationRate,
+    t: isDisabled() ? 0 : (t - current.since) * rate,
+    dt: dt * rate,
     params: paramsFor(current.key),
     look: look(),
     dir,
@@ -281,6 +360,10 @@ function housekeeping(t) {
     if (avoiding.phase === 'walk' && !moving && !dragging && !falling) walkAway();
     return;
   }
+  if (restLevel) {
+    if (moving) endMove();
+    return;
+  }
 
   if (moving && moving.follow) {
     const velocity = !dragging && !falling && !forced && !timed && sessionStatus === 'idle' ? cursorFollowVelocity(true) : null;
@@ -359,8 +442,39 @@ function react(trigger, stdKey, extra = {}) {
 
 // ---------- sounds ----------
 
+// A running audio stream costs about 1% of a CPU core even in silence, but it keeps the
+// output device awake, so a sound starts at once and Bluetooth or HDMI audio can't clip its
+// first moments. So it stays running while you're around and sounds are recent, and
+// suspends only once you're away or nothing has played for a while.
+const AUDIO_QUIET_MS = 5 * 60e3;
+const AUDIO_TAIL_MS = 5000; // a sound can ring on for this long after it starts
+const AUDIO_WAKE_MS = 60; // lead-in after resuming, so the device is ready for the sound's start
+
 let audio = null;
 let loopTimer = null;
+let lastSoundAt = 0;
+
+// Plays as soon as the stream can, opening it if needed. false if it can't be opened.
+function whenAudible(play) {
+  lastSoundAt = now();
+  try {
+    audio = audio || new AudioContext();
+    if (audio.state !== 'suspended') {
+      play();
+      return true;
+    }
+    const stream = audio;
+    stream.resume().then(() => setTimeout(() => { if (audio === stream) play(); }, AUDIO_WAKE_MS)).catch(() => {});
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function restAudio(t) {
+  if (!audio || audio.state !== 'running' || loopTimer || t - lastSoundAt < AUDIO_TAIL_MS) return;
+  if (restLevel || t - lastSoundAt > AUDIO_QUIET_MS) audio.suspend().catch(() => {});
+}
 
 function soundFor(key) {
   const user = (inst.sound.anims || {})[key] || {};
@@ -380,17 +494,12 @@ function sound(key, danceAllowed = false, deadline = Infinity) {
   const s = soundFor(key);
   const recipe = s.name && ((manifest.sounds && manifest.sounds[s.name]) || PetSounds.SOUNDS[s.name]);
   if (!s.on || !recipe || s.volume <= 0) return;
-  try {
-    audio = audio || new AudioContext();
-    if (audio.state === 'suspended') audio.resume();
-  } catch {
-    return;
-  }
   const cageVolFactor = inst.caged ? 0.12 : 1;
   const vol = inst.sound.volume * s.volume * cageVolFactor;
-  PetSounds.play(audio, recipe, vol);
+  if (!whenAudible(() => PetSounds.play(audio, recipe, vol))) return;
   if (recipe.repeatMs) loopTimer = setInterval(() => {
     if (now() >= deadline) { clearInterval(loopTimer); loopTimer = null; return; }
+    lastSoundAt = now();
     PetSounds.play(audio, recipe, vol);
   }, recipe.repeatMs);
 }
@@ -429,6 +538,7 @@ window.host.onInit(async (data) => {
   inst = data.instance;
   link = data.link;
   if (data.globals) globals = data.globals;
+  setRest(data.rest || 0);
   renderButtons();
   applyInstance();
   await loadPet(data.code);
@@ -462,6 +572,7 @@ window.host.onInstance((next) => {
   if (before?.visible === false && next.visible !== false) {
     document.body.classList.remove('dismissed'); // it had left in a puff of smoke
     sound(current.key);
+    hurryFrame();
   }
 });
 
@@ -622,7 +733,7 @@ window.host.onAvoid((m) => {
 });
 
 window.host.onInteract((m) => {
-  if (isDisabled() || !inst || inst.asleep || inst.sitting || inst.caged || inst.isCage) return;
+  if (isDisabled() || !inst || restLevel || inst.asleep || inst.sitting || inst.caged || inst.isCage) return;
   activity();
   sleeping = false;
   const key = { bump: 'bump', shoo: 'shoo', greet: 'greet' }[m.type];
@@ -632,7 +743,7 @@ window.host.onInteract((m) => {
 });
 
 window.host.onDance(({ duration }) => {
-  if (!inst || !manifest || inst.visible === false || isDisabled() || inst.asleep || inst.sitting || sleeping ||
+  if (!inst || !manifest || inst.visible === false || isDisabled() || restLevel || inst.asleep || inst.sitting || sleeping ||
       inst.caged || inst.isCage ||
       !inst.behavior.social || inst.behavior.calm || !enabled('dance') || !has('dance') ||
       dragging || falling || forced || timed || avoiding || sessionStatus !== 'idle') return;
@@ -1403,9 +1514,7 @@ window.host.onDismiss(() => {
 function poof(force = false) {
   if (!inst || (!force && inst.visible === false) || globals.muteAll || inst.sound.muted || isDisabled() || inst.sound.volume <= 0) return;
   try {
-    audio = audio || new AudioContext();
-    if (audio.state === 'suspended') audio.resume();
-    PetSounds.play(audio, PetSounds.SOUNDS.poof, Math.min(1, inst.sound.volume * 1.5));
+    whenAudible(() => PetSounds.play(audio, PetSounds.SOUNDS.poof, Math.min(1, inst.sound.volume * 1.5)));
   } catch {}
 }
 

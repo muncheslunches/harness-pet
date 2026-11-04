@@ -53,7 +53,7 @@ Up to 10 lines per key, 60 characters each (aim for under 28 so the bubble stays
 
 ## Drawing: `draw(g, ctx)`
 
-Called about 30 times a second for the animation that's playing. Draw the whole frame each time; the canvas is cleared for you. Work in **pet pixels**: (0, 0) is top-left, x grows right, y grows down. The host scales the canvas up with crisp pixels.
+Called up to about 30 times a second for the animation that's playing. It runs less often while the picture isn't changing and once the PC has been idle for a while (`t` also runs slower then), so base motion on `t` or `dt`, never on `frame`. Draw the whole frame each time; the canvas is cleared for you. Work in **pet pixels**: (0, 0) is top-left, x grows right, y grows down. The host scales the canvas up with crisp pixels.
 
 `g`, the graphics helper:
 

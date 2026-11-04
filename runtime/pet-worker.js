@@ -20,6 +20,9 @@ let pet = null;
 let manifest = null;
 let g = null;
 let failed = new Set();
+let screenCtx = null; // the canvas on screen; pets draw on a private buffer (g) instead
+let shownPixels = null;
+const COMPARE_MAX = 256 * 256; // a bigger pet canvas is simply redrawn each frame
 
 function lockdown() {
   const scopes = new Set();
@@ -81,8 +84,36 @@ function load(code) {
   return r;
 }
 
+// Shows the frame the pet just drew, unless it looks exactly like the one on screen:
+// a drawn frame costs the GPU process and Windows' compositor work even when no pixel
+// differs, and a small pixel-art pet repeats itself for most of its frames.
+function present() {
+  const buffer = g.ctx.canvas;
+  const { width: w, height: h } = buffer;
+  if (screenCtx.canvas.width !== w || screenCtx.canvas.height !== h) {
+    screenCtx.canvas.width = w;
+    screenCtx.canvas.height = h;
+    shownPixels = null;
+  }
+  if (w * h > COMPARE_MAX) {
+    screenCtx.globalCompositeOperation = 'copy';
+    screenCtx.drawImage(buffer, 0, 0);
+    return true;
+  }
+  const image = g.ctx.getImageData(0, 0, w, h);
+  const pixels = new Uint32Array(image.data.buffer);
+  if (shownPixels && shownPixels.length === pixels.length) {
+    let same = true;
+    for (let i = 0; i < pixels.length; i++) if (pixels[i] !== shownPixels[i]) { same = false; break; }
+    if (same) return false;
+  }
+  screenCtx.putImageData(image, 0, 0);
+  shownPixels = pixels;
+  return true;
+}
+
 function frame(m) {
-  if (!pet || !g) return;
+  if (!pet || !g) return false;
   const canvas = g.ctx.canvas;
   if (canvas.width !== manifest.canvas.width) canvas.width = manifest.canvas.width;
   if (canvas.height !== manifest.canvas.height) canvas.height = manifest.canvas.height;
@@ -124,13 +155,16 @@ function frame(m) {
     failed.add(m.anim);
     send({ type: 'draw-error', anim: m.anim, message: String((err && err.message) || err).slice(0, 500) });
   }
+  return present();
 }
 
 const receive = (e) => {
   const m = e.data;
   if (m.type === 'canvas') {
     if (g) return;
-    g = makeGraphics(m.canvas.getContext('2d'));
+    screenCtx = m.canvas.getContext('2d');
+    // read back every frame (see present), so it is kept in ordinary memory
+    g = makeGraphics(new OffscreenCanvas(m.canvas.width, m.canvas.height).getContext('2d', { willReadFrequently: true }));
     if (m.port) {
       privatePort = m.port;
       send = privatePort.postMessage.bind(privatePort);
@@ -146,8 +180,7 @@ const receive = (e) => {
       send({ type: 'error', message: String((err && err.message) || err).slice(0, 500) });
     }
   } else if (m.type === 'frame') {
-    frame(m);
-    send({ type: 'frame-done', frame: m.frame });
+    send({ type: 'frame-done', frame: m.frame, changed: frame(m) });
   }
 };
 self.onmessage = receive;

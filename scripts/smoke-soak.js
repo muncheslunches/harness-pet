@@ -26,6 +26,7 @@ const prefs = {
     { uid: 'p-soak-4', pet: 'builtin:clawrk', harness: null, buttons: [0, null], visible: true, size: 1, barMode: 'expanded' },
   ],
   keyboardAsked: true,
+  keyboardConsentVersion: 1,
   watchKeyboard: false,
 };
 fs.writeFileSync(path.join(dataDir, 'prefs.json'), JSON.stringify(prefs));

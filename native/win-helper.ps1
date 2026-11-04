@@ -19,6 +19,7 @@
 #   restack 1234 5678
 #                   put those always-on-top windows back in front if ordinary windows got
 #                   above them; answers how many it moved
+#   fullscreen      "ok true" while a full-screen game, video or presentation is in front
 # Each command answers one line: "ok ..." or "err ...".
 
 $ErrorActionPreference = 'Stop'
@@ -174,6 +175,11 @@ public static class PetWin {
     [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] static extern IntPtr GetWindowLongPtr(IntPtr h, int index);
     [DllImport("shell32.dll")] static extern int SHQueryUserNotificationState(out int state);
+
+    public static bool FullScreen() {
+        int state;
+        return SHQueryUserNotificationState(out state) == 0 && state >= 2 && state <= 4; // busy, Direct3D, presentation
+    }
 
     static bool IsTopmost(IntPtr h) { return ((long)GetWindowLongPtr(h, -20) & 0x8) != 0; } // GWL_EXSTYLE, WS_EX_TOPMOST
 
@@ -361,6 +367,7 @@ while ($true) {
                 $ids = [long[]]@(if ($parts.Count -gt 1) { ($parts[1] -split '\s+') | ForEach-Object { [long]$_ } })
                 [Console]::Out.WriteLine("ok $([PetWin]::Restack($ids))")
             }
+            'fullscreen' { [Console]::Out.WriteLine("ok $(([PetWin]::FullScreen()).ToString().ToLower())") }
             'ping' { [Console]::Out.WriteLine('ok pong') }
             default { [Console]::Out.WriteLine("err unknown-command $($parts[0])") }
         }

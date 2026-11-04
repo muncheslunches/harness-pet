@@ -4,6 +4,7 @@
 // typed with Caps Lock on (phrase, the default) or ordinary typing (typing). Passes when the
 // pet ends up off the text. Needs the text window to have
 // keyboard focus; if it cannot get it, the test stops instead of typing into another app.
+// It also stops if sent keys are not reaching this PC.
 
 const { app, BrowserWindow } = require('electron');
 const { spawn, spawnSync } = require('child_process');
@@ -33,6 +34,22 @@ if (-not $was) { Tap 0x14 }`;
   spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { stdio: 'ignore' });
 }
 
+// Tools like Mouse Without Borders send keys to another PC while the cursor is over there, where
+// they would flip that PC's Caps Lock and type into its apps. So press a key no keyboard has and
+// check that it reaches the text window before pressing anything real.
+async function keysArriveHere(win) {
+  let arrived = false;
+  const saw = (_, input) => { if (input.key === 'F24') arrived = true; };
+  win.webContents.on('before-input-event', saw);
+  const script = `
+Add-Type -Namespace W -Name K -MemberDefinition '[DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);'
+[W.K]::keybd_event(0x87,0,0,[UIntPtr]::Zero); [W.K]::keybd_event(0x87,0,2,[UIntPtr]::Zero)`;
+  spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { stdio: 'ignore' });
+  await wait(500);
+  win.webContents.off('before-input-event', saw);
+  return arrived;
+}
+
 app.whenReady().then(async () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'hp-e2e-'));
   const data = path.join(home, '.harness-pet');
@@ -40,7 +57,7 @@ app.whenReady().then(async () => {
   const inst = store.newInstance('builtin:clawrk', null);
   inst.pos = { x: 300, y: 300 };
   Object.assign(inst.behavior, { avoidText: MODE === 'typing', wander: false, tricks: 'off', nap: false, avoidCursor: false, followCursor: false });
-  fs.writeFileSync(path.join(data, 'prefs.json'), JSON.stringify({ instances: [inst], watchKeyboard: true, keyboardAsked: true }));
+  fs.writeFileSync(path.join(data, 'prefs.json'), JSON.stringify({ instances: [inst], watchKeyboard: true, keyboardAsked: true, keyboardConsentVersion: 1, hotkeysEnabled: false, muteAll: true }));
   const readPos = () => { try { return JSON.parse(fs.readFileSync(path.join(data, 'prefs.json'), 'utf8')).instances[0].pos; } catch { return null; } };
 
   const lines = Array.from({ length: 34 }, (_, i) => `Line ${i + 1}: the quick brown fox jumps over the lazy dog and keeps on running`).join('<br>');
@@ -65,6 +82,10 @@ app.whenReady().then(async () => {
   if (!(await hasFocus())) {
     helper.stop();
     return finish(3, 'ABORTED: the text window is not the window in front, so nothing was typed (try again without touching the mouse)');
+  }
+  if (!(await keysArriveHere(win))) {
+    helper.stop();
+    return finish(3, 'ABORTED: sent keys are not reaching this PC (is the cursor on another computer?), so nothing was typed');
   }
   const before = readPos();
   console.log('pet before:', JSON.stringify(before));

@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('host', {
   onGlobals: on('globals'),
   onPresence: on('presence'),
   onSessions: on('sessions'),
+  onRest: on('rest'),
   onLayout: on('layout'),
   onCursor: on('cursor'),
   onNotice: on('notice'),

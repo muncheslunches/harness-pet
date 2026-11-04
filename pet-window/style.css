@@ -186,6 +186,8 @@ body.disabled #pet-wrap { opacity: 0.45; filter: grayscale(0.7); }
 }
 #bubble.shout .tail { width: 15px; height: 15px; border-width: 2px; }
 #bubble.done-state { --bub-edge: rgba(127, 182, 133, 0.6); }
+/* you are away: looping animations stop asking the compositor for frames */
+body.resting #bubble, body.resting .dot { animation-play-state: paused; }
 
 .eyebrow {
   color: var(--muted);

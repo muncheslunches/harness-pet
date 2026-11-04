@@ -2,6 +2,8 @@ node_modules/
 *.log
 dist/
 build/runtime/
+native/bin/
+native/rust/target/
 .npm-cache/
 .test-tmp/
 

@@ -12,7 +12,7 @@ module.exports = {
   files: [
     'main.js', 'lib/**', 'native/**', 'pet-window/**', 'pets/clawrk.pet.js',
     'runtime/**', 'shared/**', 'studio/**', 'hook/**', 'docs/**',
-    '!docs/releases/**', '!**/*.bak',
+    '!docs/releases/**', '!**/*.bak', '!native/rust/**',
     'scripts/validate-pet.js', 'assets/*.png', 'LICENSE', 'README.md',
   ],
   extraResources: [{ from: 'build/runtime', to: 'node' }],

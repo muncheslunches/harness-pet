@@ -21,6 +21,7 @@ prefs.instances = ['clawrk', 'clawrk', 'clawrk', 'clawrk'].map((name) => {
   return inst;
 });
 prefs.keyboardAsked = true; // no first-run question during the smoke test
+prefs.keyboardConsentVersion = 1;
 store.savePrefs(prefs);
 require('../main');
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -51,6 +52,7 @@ app.whenReady().then(async () => {
     chordPet.webContents.sendInputEvent({ ...chordInput, type: 'mouseUp', button: 'middle', modifiers: ['rightButtonDown'] });
     chordPet.webContents.sendInputEvent({ ...chordInput, type: 'mouseUp', button: 'right' });
     await chordPet.webContents.executeJavaScript('closeMenu()');
+    await pause(200); // focus has gone back to the app the menu came from; the next menu must not race that
     chordPet.hide();
     for (const win of windows) {
       await win.webContents.executeJavaScript(`{

@@ -29,6 +29,7 @@ The screenshots use the current app with an isolated profile and sample session 
 - **Pets meet each other.** Walk into another pet and you get rejected, dizzy, while the other shoos you off. Drop one on another and it gets shoved aside. Idle neighbours wave.
 - **You decide how much it moves:** anchor it to its bar on a short leash, keep it on one screen, any screen or the taskbar, make it shy or clingy, let it fall when dropped, set its speed, or turn on calm mode.
 - **Gets out of your way** (optional, you're asked on first run). Standing on text while you type, a pet huffs and walks to a bare spot until you stop. With Caps Lock on, type `GO AWAY`, `GET OUT` or `MOVE` and every pet near text moves off it and stays put for 30 seconds to 5 minutes, or until you click it. See [Getting out of the way](#getting-out-of-the-way-of-text).
+- **Rests while you're away.** After 5 minutes without keyboard or mouse input pets slow right down; after 10 they fall asleep. Your first touch wakes them, and news from its agent wakes a pet too. It saves CPU and GPU, and you can change the times or turn it off.
 - **Any size.** Ctrl + mouse wheel over the pet resizes it from 50% to 300%, with a little mouse-wheel indicator. Bigger pets move slightly slower.
 - **Studio:** a library with live previews, an animation tester with per-animation toggles and sliders, behavior settings, a pet-creation prompt maker, and agent setup.
 - **Modular pets.** A pet is one `.pet.js` file. Missing standard animations get stand-ins plus an **Include this** button that copies a prompt to add them. Custom animations (a bird that zooms across the screen at high speed, say) are detected automatically, with their own toggles and sliders.
@@ -103,6 +104,7 @@ Read [Privacy](#privacy) first if you want to know what the app sees. [Verify it
 A few more things worth knowing:
 
 - **Sleep.** Putting a pet to sleep stops travel and plays its sleep animation at 10% speed; waking it plays its wake animation when available.
+- **Resting while you're away.** With no keyboard or mouse input for 5 minutes, pets stop wandering and play in slow motion. After 10 they sleep: no moving, tricks or greeting other pets, and about one drawn frame a second. Using your PC wakes them all at once, and anything new from its agent (a tool call, a question, a finished task) wakes just that pet, with its sounds. Locking the screen rests pets straight away. Set the times or turn it off in **General settings**.
 - **Bubble and buttons.** In Behavior, **Bubble → Off** hides the bubble and button bar. Setting both labeled button slots to Off automatically minimizes the bubble and disables Shown until a button is enabled.
 - **Neighbours.** After three consecutive collisions with the same neighbour, the pet waits ten seconds before moving again. Turn on **Behavior → Pass through other pets** for a pet that moves through its neighbours without bumping or blocking them; it stays clickable and draggable.
 - **Menus.** Only one pet settings menu opens at a time; Escape or clicking elsewhere dismisses it.
@@ -116,7 +118,7 @@ Windows only. Two things make a pet step off your text:
 - **Typing.** While you type, a pet standing on text (or on the line you are about to fill, when the app reports its caret) walks to the nearest bare spot, avoiding other pets and, where it can, crossing text on the way. It waits there until you've stopped typing for a few seconds. Turn it off per pet with **Behavior → Dodge my typing**.
 - **Capital-letter commands.** Turn Caps Lock on and type `GO AWAY`, `GET OUT` or `MOVE` (a whole word, then pause or press Space/Enter). Every pet near text goes to a bare spot and stays for 30 seconds to 5 minutes. A left or right click on the pet sends it back to normal at once. Calm and anchored pets don't move.
 
-How it works and what it sees: a small PowerShell process (`native/key-watch.ps1`) watches the keyboard. It reports *that* you pressed a key, never which one, except while Caps Lock is on, when it forwards key codes so the command can be recognised; only a short rolling buffer of capital letters is kept, in memory, and cleared on anything else. When a pet might be in the way, the app takes a screenshot with the pets hidden from it, looks for text-like texture (sharp strokes in both directions, so it works in any app and theme) and throws the screenshot away. Nothing is stored or sent anywhere. It's **off until you say yes**: the app asks once on first run, and you can switch it on or off any time with the tray item **Watch typing (dodge text, "GO AWAY")**.
+How it works and what it sees: a small separate program ([`native/rust/src/bin/keywatch.rs`](native/rust/src/bin/keywatch.rs)) watches the keyboard. It passes every key on untouched. It reports *that* you pressed a key, never which one, except while Caps Lock is on, when it forwards key codes so the command can be recognised; only a short rolling buffer of capital letters is kept, in memory, and cleared on anything else. When a pet might be in the way, the app takes a screenshot with the pets hidden from it, looks for text-like texture (sharp strokes in both directions, so it works in any app and theme) and throws the screenshot away. Nothing is stored or sent anywhere. It's **off until you say yes**: the app asks once on first run, and you can switch it on or off any time with the tray item **Watch typing (dodge text, "GO AWAY")**.
 
 Detection is by texture, not by reading, so busy photos and patterned wallpaper can look like text, and very faint text may be missed. `npx electron scripts/smoke-scan.js` checks capture on your machine; `npx electron scripts/e2e-avoid.js [phrase|typing]` runs the whole thing against a scratch copy of the app (it needs a moment of keyboard focus and types into its own test window).
 
@@ -143,6 +145,7 @@ If a hook event goes missing, the pet reads the agent's own transcript (Claude C
 ## Troubleshooting
 
 - **A pet is stuck or frozen.** **Ctrl + double-click** it, or choose **Refresh this pet** from its menu (also in the Studio). Refresh recreates its window and worker and keeps its position and settings. If you can't click the pet, choose **Refresh all pets** from the tray. A crashed pet window reloads automatically, up to twice per minute, and resets its mouse capture so it can't block the desktop.
+- **Pets look slow or asleep and you didn't ask for it.** They rest when there's no keyboard or mouse input, which includes watching a video. Move the mouse, or change the times in **General settings**.
 - **A pet is off-screen.** Middle-click menu → **Bring back on screen**, or **Refresh all pets** from the tray.
 - **The Studio says settings could not be loaded or saved.** See [Settings recovery](#settings-recovery). A failed save is retried and the message clears on its own once a save succeeds.
 - **Claude Code shows hook errors after you moved the app.** Disconnect and Connect again from the new location (see [Uninstall](#uninstall) for other agents).
@@ -183,7 +186,7 @@ The typing consent dialog includes the in-memory screen scan. Older profiles are
 
 A desktop app with a global keyboard hook and screenshots can look like a keylogger, so you're right to check. Harness Pet ships as plain, readable files (no ASAR archive, no minified bundle), so you can inspect the exact code you run:
 
-- **Keyboard watcher:** [`native/key-watch.ps1`](native/key-watch.ps1) is the whole hook. It prints `t` ("a key was pressed", at most every 250 ms) and, only while Caps Lock is on, the key code. [`lib/key-watch.js`](lib/key-watch.js) is the only code that reads that output.
+- **Keyboard watcher:** [`native/rust/src/bin/keywatch.rs`](native/rust/src/bin/keywatch.rs) is the whole hook; [`native/key-watch.ps1`](native/key-watch.ps1) is the same thing in PowerShell, used if that program is missing or blocked. Either one prints `t` ("a key was pressed", at most every 250 ms) and, only while Caps Lock is on, the key code. [`lib/key-watch.js`](lib/key-watch.js) is the only code that reads that output.
 - **Network blocking and sandboxing:** [`lib/security.js`](lib/security.js), [`lib/ipc-policy.js`](lib/ipc-policy.js) and [`runtime/pet-worker.js`](runtime/pet-worker.js).
 
 For an independent second opinion, use **[REA (Reverse Engineer Anything)](https://github.com/morluto/rea)**, a free, MIT-licensed, third-party tool that lets an AI coding agent (Claude Code, Codex, Cursor, Gemini CLI and others) analyze a program and show the evidence behind its answers. Harness Pet is not affiliated with REA. You need Node.js 22.19 or newer.
@@ -199,7 +202,7 @@ For an independent second opinion, use **[REA (Reverse Engineer Anything)](https
 
 2. Ask your agent something like this, using the folder you want to check. For an installed copy, that's `%LOCALAPPDATA%\Programs\Harness Pet\resources\app` by default. For a source checkout, use the project folder.
 
-   > Use REA to analyze the Electron app at `<folder>`. Does it send any data over the network? What does `native/key-watch.ps1` report to the app, and does anything store, log or transmit keystrokes or screenshots? Show me the evidence.
+   > Use REA to analyze the Electron app at `<folder>`. Does it send any data over the network? What do `native/rust/src/bin/keywatch.rs` and `native/key-watch.ps1` report to the app, and does anything store, log or transmit keystrokes or screenshots? Show me the evidence.
 
 3. Or skip the agent and get REA's raw static report: modules, imports and Electron boundaries, each with its evidence:
 
@@ -227,11 +230,12 @@ These work, but they're rougher than the rest of the app and may change or disap
 
 - **Duplicate selected pet** puts another copy of the selected pet on screen. Each duplicate starts as a copy of the original, agent and settings included, and can then be changed on its own. Press it a few times for a swarm.
 - **Dismiss all duplicates** removes every duplicate at once and leaves your original pets alone.
+- **Sleep during full-screen apps** rests pets as if you were away while a full-screen game, video or presentation is in front. News from its agent still wakes a pet.
 - **...cage...** adds an ornate cage to the screen. Drop pets into it to cage them: caged pets stay inside, move more slowly and ignore other pets. Untick it to release them.
 - **Voice (experimental)**, one of the Claude Code buttons, opens a new Claude chat and then tries to press its voice or dictation button for you. It depends on the Claude app's layout, so it can miss.
 
 > [!WARNING]
-> **Go easy on the number of pets.** Every pet on screen, duplicates included, is its own window with its own sandboxed worker, so memory and CPU use grow with each one. A handful is fine. Dozens can make your PC sluggish, especially with animations and sounds on. If things slow down, press **Dismiss all duplicates**, or quit Harness Pet from the tray.
+> **Go easy on the number of pets.** Every pet on screen, duplicates included, is its own window with its own sandboxed worker, so memory and CPU use grow with each one. (A pet that's hidden closes its window, so it costs next to nothing.) A handful is fine. Dozens can make your PC sluggish, especially with animations and sounds on. If things slow down, press **Dismiss all duplicates**, or quit Harness Pet from the tray.
 
 ## Where things live
 
@@ -249,7 +253,7 @@ These work, but they're rougher than the rest of the app and may change or disap
 npm test
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for how to send changes.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to send changes. `npm run perf` measures what a set of pets costs in CPU and memory (`scripts/perf.js` lists the options).
 
 | Folder | Holds |
 |---|---|
@@ -259,6 +263,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to send changes.
 | `studio/` | The Studio |
 | `runtime/` | The sandboxed pet worker |
 | `shared/` | Animation catalog, pet schema and harness notes |
+| `native/` | The Windows helpers: Rust in `native/rust`, built into `native/bin` by `npm run build:native`; the PowerShell scripts do the same job when those aren't built |
 | `pets/clawrk.pet.js` | Clawrk |
 
 ### Build a Windows installer

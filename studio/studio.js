@@ -225,6 +225,8 @@ function renderSide() {
 
   const toggleCage = document.getElementById('toggle-cage');
   if (toggleCage) toggleCage.checked = !!state.cageEnabled;
+  const toggleFullscreen = document.getElementById('toggle-fullscreen');
+  if (toggleFullscreen) toggleFullscreen.checked = !!state.general?.pauseFullscreen;
 
   side.scrollTop = atBottom ? side.scrollHeight : scrollTop;
 }
@@ -239,6 +241,7 @@ document.getElementById('move-pet-down')?.addEventListener('click', async () => 
   await S.moveInstance(selected, 1);
   await refresh(true);
 });
+document.getElementById('toggle-fullscreen')?.addEventListener('change', (e) => S.setGeneral('pauseFullscreen', e.target.checked));
 document.getElementById('toggle-cage')?.addEventListener('change', async (e) => {
   const on = e.target.checked;
   await S.setCageEnabled(on);
@@ -319,6 +322,10 @@ RENDER.general = (root) => {
   const sw = (key, on, extra = {}) => h('label', { class: 'switch' }, h('input', { type: 'checkbox', checked: !!on, disabled: extra.disabled, 'aria-label': extra.label,
     onchange: (e) => S.setGeneral(key, e.target.checked).then(() => extra.done?.(e.target.checked)) }), h('span'));
   const tip = (text) => h('span', { class: 'tip', tabindex: 0, role: 'note', 'aria-label': text, 'data-tip': text }, 'i');
+  const minutesPicker = (key, value, choices, disabled) => {
+    const options = [...new Set([...choices, value])].sort((a, b) => a - b).map((n) => h('option', { value: n, selected: n === value }, n + ' min'));
+    return h('select', { disabled, 'aria-label': key === 'idleSlowMinutes' ? 'Slow down after' : 'Fall asleep after', onchange: (e) => S.setGeneral(key, Number(e.target.value)) }, ...options);
+  };
   root.append(
     h('h1', {}, 'General settings'),
     h('p', { class: 'lede' }, 'Settings for Harness Pet as a whole. What each pet does on its own is under My pets.'),
@@ -326,6 +333,9 @@ RENDER.general = (root) => {
     h('div', { class: 'settings' },
       row('Mute all pets', 'Silences every pet at once. Each pet keeps its own volume and sound choices for when you turn this off.', sw('muteAll', g.muteAll, { label: 'Mute all pets' })),
       row('No dancing', 'Pets never dance, alone or together.', sw('noDance', g.noDance, { label: 'No dancing' })),
+      row('Rest while you are away', 'With no keyboard or mouse input, pets slow right down, then fall asleep. Using your PC wakes them all; news from its agent wakes a pet too. This saves CPU and GPU, and sounds for agent news still play.', sw('idleRest', g.idleRest, { label: 'Rest while you are away' })),
+      row('Slow down after', 'Minutes without input before pets slow down.', minutesPicker('idleSlowMinutes', g.idleSlowMinutes, [2, 3, 5, 10, 15, 30], !g.idleRest)),
+      row('Fall asleep after', 'Minutes without input before pets sleep: no moving and no interacting until something wakes them.', minutesPicker('idleSleepMinutes', g.idleSleepMinutes, [5, 10, 15, 30, 60, 120], !g.idleRest)),
     ),
     h('div', { class: 'kind-head' }, 'Typing'),
     h('div', { class: 'settings' },

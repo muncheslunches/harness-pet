@@ -25,6 +25,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build the Rust helpers
+        run: npm run build:native
+
+      - name: Test the Rust helpers
+        run: cargo test --release --locked --manifest-path native/rust/Cargo.toml
+
       - name: Run unit tests
         run: npm test
 

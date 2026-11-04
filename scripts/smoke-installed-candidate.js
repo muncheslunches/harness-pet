@@ -58,6 +58,10 @@ try {
   assert.ok(fs.existsSync(path.join(unpackedDir, 'resources', 'app', 'scripts', 'validate-pet.js')), 'Validator must exist');
   assert.ok(fs.existsSync(path.join(unpackedDir, 'resources', 'app', 'native', 'win-helper.ps1')), 'win-helper must exist');
   assert.ok(fs.existsSync(path.join(unpackedDir, 'resources', 'app', 'native', 'key-watch.ps1')), 'key-watch must exist');
+  for (const exe of ['harness-pet-helper.exe', 'harness-pet-keywatch.exe']) {
+    assert.ok(fs.existsSync(path.join(unpackedDir, 'resources', 'app', 'native', 'bin', exe)), exe + ' must ship; run npm run build:native');
+  }
+  assert.ok(!fs.existsSync(path.join(unpackedDir, 'resources', 'app', 'native', 'rust')), 'the helpers\' source and build output stay out of the installer');
 
   // Verify exclusions
   assert.ok(!fs.existsSync(path.join(unpackedDir, 'resources', 'app', 'pets', 'clawd.pet.js')), 'clawd.pet.js must not be packaged');

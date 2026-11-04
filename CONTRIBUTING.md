@@ -17,6 +17,8 @@ npm ci
 npm start
 ```
 
+The app works as it is. To build the small Windows helpers it prefers over its PowerShell scripts, install [Rust](https://rustup.rs) and run `npm run build:native`.
+
 Before sending changes:
 
 ```bash
@@ -24,7 +26,7 @@ npm test
 npm run validate -- pets/clawrk.pet.js
 ```
 
-For sandbox changes, also run `npm run test:security:electron`, which launches real Electron renderers. Build an installer with `npm run dist:win`; it requires `LICENSE` beside the build-time Node executable and writes to `dist/` without publishing.
+For sandbox changes, also run `npm run test:security:electron`, which launches real Electron renderers. For changes to resting, hidden pets or the helpers, run `npm run test:smoke:rest`, which briefly shows real pets on screen. A change to one helper command belongs in both `native/rust` and the matching PowerShell script. Build an installer with `npm run dist:win`; it requires `LICENSE` beside the build-time Node executable and writes to `dist/` without publishing.
 
 ## Reporting bugs and diagnostics
 
