@@ -26,7 +26,7 @@ npm test
 npm run validate -- pets/clawrk.pet.js
 ```
 
-For sandbox changes, also run `npm run test:security:electron`, which launches real Electron renderers. For changes to resting, hidden pets or the helpers, run `npm run test:smoke:rest`, which briefly shows real pets on screen. A change to one helper command belongs in both `native/rust` and the matching PowerShell script. Build an installer with `npm run dist:win`; it requires `LICENSE` beside the build-time Node executable and writes to `dist/` without publishing.
+For sandbox changes, also run `npm run test:security:electron`, which launches real Electron renderers. For changes to resting, hidden pets or the helpers, run `npm run test:smoke:rest`, which briefly shows real pets on screen. A change to one helper command belongs in both `native/rust` and the matching PowerShell script. Build an installer with `npm run dist:win`; it requires `LICENSE` beside the build-time Node executable and writes to `dist/` without publishing. `node scripts/smoke-soak.js [minutes]` then runs that build with sound on and Studio open, and fails if memory keeps growing. `node scripts/smoke-installed-candidate.js` installs and uninstalls it for real, restoring any Harness Pet shortcuts you already have.
 
 ## Reporting bugs and diagnostics
 

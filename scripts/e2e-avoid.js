@@ -5,6 +5,7 @@
 // pet ends up off the text. Needs the text window to have
 // keyboard focus; if it cannot get it, the test stops instead of typing into another app.
 // It also stops if sent keys are not reaching this PC.
+// Set HARNESS_PET_MENU_EXE to run the pet from a packaged build instead of this checkout.
 
 const { app, BrowserWindow } = require('electron');
 const { spawn, spawnSync } = require('child_process');
@@ -65,7 +66,8 @@ app.whenReady().then(async () => {
   await win.loadURL(`data:text/html,<body style="margin:0;background:white;color:black;font:14px Consolas,monospace;padding:8px;overflow:hidden"><div id=t style="display:inline-block;white-space:nowrap">${lines}</div></body>`);
   const textRight = TEXT.x + 8 + await win.webContents.executeJavaScript('document.getElementById("t").offsetWidth');
 
-  const child = spawn(process.execPath, [ROOT, '--user-data-dir=' + path.join(home, 'ud')], {
+  const packaged = process.env.HARNESS_PET_MENU_EXE;
+  const child = spawn(packaged || process.execPath, [...(packaged ? [] : [ROOT]), '--user-data-dir=' + path.join(home, 'ud')], {
     env: { ...process.env, USERPROFILE: home, HOME: home, HARNESS_PET_KEYWATCH_INJECTED: '1', ELECTRON_RUN_AS_NODE: undefined, HARNESS_PET_AVOID_LOG: '1' }, stdio: ['ignore', fs.openSync(path.join(home, 'app.log'), 'a'), fs.openSync(path.join(home, 'app.log'), 'a')],
   });
   const finish = (code, msg) => { try { require('../lib/helper').stop(); } catch {} console.log(msg); try { console.log(fs.readFileSync(path.join(home, 'app.log'), 'utf8').slice(-1500)); } catch {} try { child.kill(); } catch {} win.destroy(); app.exit(code); };

@@ -38,6 +38,15 @@ function run(cmd, args, opts = {}) {
 
 // Scratch directory for all tests
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hp-candidate-test-'));
+const installDir = path.join(tempRoot, 'Install Test é 🦀');
+const uninstallerExe = path.join(installDir, 'Uninstall Harness Pet.exe');
+
+// The installer writes to this Windows account, not to the temp folder: its shortcuts replace any
+// "Harness Pet" shortcut already there, and its Apps & features entry outlives the test. So what
+// was there is kept and put back, and the last install is uninstalled at the end.
+const shortcuts = run('powershell.exe', ['-NoProfile', '-Command', "[Environment]::GetFolderPath('Desktop'); [Environment]::GetFolderPath('Programs')"])
+  .stdout.trim().split('\n').map((dir) => path.join(dir.trim(), 'Harness Pet.lnk'))
+  .map((file) => ({ file, saved: fs.existsSync(file) ? fs.readFileSync(file) : null }));
 
 try {
   // =========================================================================
@@ -77,7 +86,6 @@ try {
   // Test 2: Clean installation to selectable path with spaces & non-ASCII
   // =========================================================================
   console.log('\n[Test 2] Testing silent installation to path with spaces and Unicode...');
-  const installDir = path.join(tempRoot, 'Install Test é 🦀');
   // NSIS /D= must be the last argument, without quotes
   const installResult = run(installerPath, ['/S', `/D=${installDir}`], { timeout: 120000 });
   assert.equal(installResult.status, 0, 'Installer must exit 0');
@@ -254,7 +262,6 @@ try {
   // Test 5: Installed product uninstallation (connected & disconnected)
   // =========================================================================
   console.log('\n[Test 5] Testing uninstaller behavior...');
-  const uninstallerExe = path.join(installDir, 'Uninstall Harness Pet.exe');
   assert.ok(fs.existsSync(uninstallerExe), 'Uninstaller must exist');
 
   // Prepare a connected profile with third-party hook and second app copy
@@ -352,6 +359,15 @@ try {
   console.log('=============================================================\n');
 
 } finally {
+  if (fs.existsSync(uninstallerExe)) {
+    const home = path.join(tempRoot, 'final-uninstall-home');
+    fs.mkdirSync(home, { recursive: true });
+    run(uninstallerExe, ['/S', `_?=${installDir}`], { env: { ...process.env, HOME: home, USERPROFILE: home }, windowsVerbatimArguments: true, timeout: 120000, allowFailure: true });
+  }
+  for (const { file, saved } of shortcuts) {
+    if (saved) fs.writeFileSync(file, saved);
+    else fs.rmSync(file, { force: true });
+  }
   try {
     fs.rmSync(tempRoot, { recursive: true, force: true });
   } catch {}

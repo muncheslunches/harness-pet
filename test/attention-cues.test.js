@@ -64,6 +64,35 @@ test('alert keeps moving, cheer settles after its celebration', () => {
   for (const t of [2600, 5000, 60000]) assert.deepEqual(Schema.effectTransform('cheer', t), { dx: 0, dy: 0, sy: 1 });
 });
 
+test('a session that only gets older wakes nobody; a new word from its agent does', () => {
+  const rig = hostRig();
+  try {
+    const started = rig.clock.now;
+    rig.writeSession({ sessionId: 'stuck', state: 'working', ts: started, harness: 'claude-code' });
+    rig.run(`ctx = { prefs: { instances: [{ uid: 'pet', harness: 'claude-code', behavior: {} }] }, links: { links: {} } };`);
+    const newsAt = () => rig.run(`sessions = readSessions(); noteAgentNews(); agentNews.get('pet').at`);
+    assert.equal(newsAt(), 0, 'what was already there when the app started is not news');
+
+    rig.clock.now = started + 31 * 60e3;
+    assert.equal(newsAt(), 0, 'timing out to idle is not news');
+    assert.equal(rig.run(`sessions[0].effective`), 'idle');
+
+    const said = (rig.clock.now += 60e3);
+    rig.writeSession({ sessionId: 'stuck', state: 'working', ts: said, harness: 'claude-code' });
+    assert.equal(newsAt(), said, 'another tool call is');
+
+    rig.clock.now = said + 25 * 3600e3;
+    assert.equal(newsAt(), said, 'a day-old session being cleared away is not');
+    assert.equal(rig.run(`sessions.length`), 0);
+
+    const back = rig.clock.now;
+    rig.writeSession({ sessionId: 'next', state: 'working', ts: back, harness: 'claude-code' });
+    assert.equal(newsAt(), back, 'news still gets through after one');
+  } finally {
+    rig.cleanup();
+  }
+});
+
 test('a finished turn stays unseen until it is marked seen', () => {
   const rig = hostRig();
   try {

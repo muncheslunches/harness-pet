@@ -22,5 +22,8 @@
   "devDependencies": {
     "electron": "44.9.3",
     "electron-builder": "26.15.3"
+  },
+  "overrides": {
+    "minimatch@>=7.0.0 <11.0.1": "^11.0.1"
   }
 }

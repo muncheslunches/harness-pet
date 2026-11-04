@@ -159,6 +159,17 @@ app.whenReady().then(async () => {
     assert.equal(await rest(loner), 2);
     pass('a finished task counts as news too');
 
+    // ---------- time passing is not news ----------
+    fs.writeFileSync(path.join(store.PATHS.sessions, 'claude-code-s1.json'), JSON.stringify({ sessionId: 's1', harness: 'claude-code', state: 'working', ts: Date.now() - 30 * 60e3 + 6000, detail: 'Stuck', title: 'Smoke test' }));
+    await until('the stuck session shows', async () => (await js(follower, 'sessionStatus')) === 'working');
+    powerMonitor.emit('lock-screen');
+    powerMonitor.emit('unlock-screen');
+    await until('asleep with the session stuck', async () => (await rest(follower)) === 2);
+    await until('it times out to idle', async () => (await js(follower, 'sessionStatus')) !== 'working', 9000);
+    await pause(2500);
+    assert.equal(await rest(follower), 2, 'nothing new was said');
+    pass('a stuck session timing out does not wake its pet');
+
     // ---------- you come back ----------
     idleSeconds = 0;
     await until('everyone awake', async () => (await rest(follower)) === 0 && (await rest(loner)) === 0, 2500);
@@ -190,10 +201,13 @@ app.whenReady().then(async () => {
     // ---------- cursor messages ----------
     await js(loner, 'window.__cursorMessages = 0; window.host.onCursor(() => { window.__cursorMessages++; }); 1');
     const p0 = require('electron').screen.getCursorScreenPoint();
+    const w0 = loner.getPosition();
     await pause(3000);
     const p1 = require('electron').screen.getCursorScreenPoint();
+    const w1 = loner.getPosition();
     const messages = await js(loner, 'window.__cursorMessages');
-    if (p0.x === p1.x && p0.y === p1.y && !(await js(loner, 'moving'))) {
+    // a pet that walked at all has a new cursor position to report, even if it has stopped by now
+    if (p0.x === p1.x && p0.y === p1.y && w0[0] === w1[0] && w0[1] === w1[1] && !(await js(loner, 'moving'))) {
       assert.ok(messages <= 6, `a still cursor sends few messages, got ${messages} in 3 s`);
       console.log(`     ${messages} cursor messages in 3 s with the mouse still (it used to be about 33)`);
     } else console.log(`     mouse or pet moved during this check; ${messages} messages`);

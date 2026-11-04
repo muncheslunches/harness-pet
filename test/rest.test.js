@@ -32,6 +32,8 @@ test('only something new from an agent counts as news, not a session getting old
   const s = { sessionId: 'a', state: 'working', effective: 'working', ts: 1, detail: 'Editing', background: 0, age: 5 };
   const sig = Rest.agentSignature([s]);
   assert.equal(Rest.agentSignature([{ ...s, age: 50000 }]), sig);
+  assert.equal(Rest.agentSignature([{ ...s, effective: 'idle' }]), sig, 'a stuck session timing out');
+  assert.equal(Rest.agentSignature([{ ...s, background: 2 }]), sig, 'a background task counted or expiring');
   assert.notEqual(Rest.agentSignature([{ ...s, ts: 2 }]), sig, 'another tool call');
   assert.notEqual(Rest.agentSignature([{ ...s, state: 'done', effective: 'done' }]), sig, 'a finished task');
   assert.notEqual(Rest.agentSignature([]), sig, 'a session going away');
