@@ -1,6 +1,6 @@
 name: Share or request a pet
 description: Suggest a pet for the built-in collection, or ask for help making one
-labels: [pet]
+labels: [enhancement]
 body:
   - type: markdown
     attributes:

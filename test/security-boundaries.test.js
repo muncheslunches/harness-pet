@@ -103,6 +103,29 @@ test('Studio handlers enforce sender and input checks before filesystem or hook 
   assert.equal(context.testPrefs.instances[0].pet, 'outside');
 });
 
+test('refreshing a pet from Studio sends nothing back that Electron cannot clone', () => {
+  const handlers = new Map();
+  const refreshed = [];
+  const main = path.join(__dirname, '../main.js');
+  const realRequire = createRequire(main);
+  const context = vm.createContext({ process, console, __dirname: path.dirname(main), setTimeout, clearTimeout,
+    require(name) {
+      if (name === 'electron') return { app: { commandLine: { appendSwitch() {} }, requestSingleInstanceLock: () => false, quit() {} }, ipcMain: { handle: (name, fn) => handlers.set(name, fn) } };
+      if (['./lib/security', './lib/ipc-policy', 'fs', 'path'].includes(name)) return realRequire(name);
+      // Like the real host, this hands back the pet's live runtime, which holds its window.
+      if (name === './lib/pet-host') return { refreshPet: (uid) => { refreshed.push(uid); return { uid, win: { destroy() {} } }; } };
+      return {};
+    } });
+  vm.runInContext(fs.readFileSync(main, 'utf8'), context);
+  const frame = { url: pathToFileURL(path.join(__dirname, '../studio/index.html')).href };
+  const wc = { mainFrame: frame };
+  context.testStudio = { isDestroyed: () => false, webContents: wc };
+  vm.runInContext('studio = testStudio; wireStudio()', context);
+  const reply = handlers.get('studio:refresh-instance')({ sender: wc, senderFrame: frame }, 'p');
+  assert.deepEqual(refreshed, ['p']);
+  assert.doesNotThrow(() => structuredClone(reply));
+});
+
 test('configured launches validate schemes/arguments and use no shell; missing executables are handled', async () => {
   for (const target of [{ url: 'javascript:alert(1)' }, { url: 'file:///C:/Windows/calc.exe' }, { url: 'shell://AppsFolder' }, { url: 'data:text/html,x' }, { url: 'https://good', command: 'bad' }, { command: 'node', args: 'bad' }, { command: 'x', args: [null] }]) assert.throws(() => links.validateTarget(target));
   let options; let args; let failed = false;

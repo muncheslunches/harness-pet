@@ -74,7 +74,7 @@ Harness Pet runs on people's desktops, watches the keyboard (when switched on) a
 
 ## Pets in this repository
 
-Only **original characters** can be added to the built-in collection. Pets based on characters from games, films, shows or brands (even as fan art) can't be included: one takedown notice could take the whole project offline. You're welcome to make those for your own use, and to share original pets in Discussions.
+Only **original characters** can be added to the built-in collection. Pets based on characters from games, films, shows or brands (even as fan art) can't be included: one takedown notice could take the whole project offline. You're welcome to make those for your own use, and to share original pets with a *Share or request a pet* issue.
 
 Git ignores everything in `pets/` except Clawrk, the built-in pet, so the pets you make stay on your PC. To propose an original pet, add a `!/pets/<name>.pet.js` line to `.gitignore` in the same pull request.
 

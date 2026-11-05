@@ -11,7 +11,7 @@ Please **do not** open public GitHub issues or discussions for security vulnerab
 Instead, report vulnerabilities privately:
 
 1. **Send the report through one of these private channels:**
-   - **GitHub private reporting (after repository setup):** use <https://github.com/muncheslunches/harness-pet/security/advisories/new> once private reporting has been enabled and verified. Until then, use the maintainer email below.
+   - **GitHub private reporting:** use <https://github.com/muncheslunches/harness-pet/security/advisories/new>.
    - **Email:** `0vknzqgws@mozmail.com`
 2. **Include in your report:**
    - A clear description of the vulnerability or sandbox escape vector.

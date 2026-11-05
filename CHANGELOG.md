@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0-beta.4 — first public beta (unreleased)
+## 0.1.0-beta.5-final — first public beta
 
 The first release with a downloadable Windows installer. It is **unsigned**; each release publishes SHA-256 checksums. See [Windows signing](docs/WINDOWS_SIGNING.md).
 
@@ -21,7 +21,7 @@ The first release with a downloadable Windows installer. It is **unsigned**; eac
 - Smoke-poof sound plays whenever a pet re-appears in a puff of smoke, and a pet is refreshed right before it re-appears.
 - When a hook event goes missing, the pet reads the agent's own transcript to see whether the turn finished, was interrupted (Esc or a declined tool), or stopped on an API error such as a usage limit. This covers Claude Code, Codex and Antigravity, and only reads the records that say how a turn ended, never what the agent read or wrote. Each transcript is parsed again only when it changes.
 - Turn-ending errors reported by hooks (such as Claude Code's `StopFailure`) show as "Usage limit reached" or "Turn error"; a failed tool call doesn't end the turn.
-- The release workflow checks that the tag, package version and installer name match, and marks only versions like `0.1.0-beta.4` as pre-releases.
+- The release workflow checks that the tag, package version and installer name match, and marks only versions like `0.1.0-beta.5-final` as pre-releases.
 - Pets rest while you're away: slow motion after 5 minutes without input, asleep after 10. Your first input wakes them all, news from its agent wakes one, and locking the screen rests them at once. The times are in General settings.
 - Experimental: **Sleep during full-screen apps**.
 - `npm run perf` measures what a set of pets costs, and `npm run test:smoke:rest` checks resting, hidden pets and the helpers in real windows.
@@ -29,7 +29,7 @@ The first release with a downloadable Windows installer. It is **unsigned**; eac
 ### Changed
 
 - Pets without their own "needs you" or "done" animation no longer play the same stand-in for both: "needs you" is an urgent double hop, "done" hops briefly and then settles.
-- Studio > Behavior is grouped (On screen and buttons on top, then Coming and going, Agent and look, Moving around, Personality). Options that depend on another setting are greyed out until it is on. The right-click Behavior menu uses the same groups.
+- Studio > Behavior is grouped (On screen and buttons on top, then Coming and going, Agent and look, Moving around, Personality). Options that depend on another setting are greyed out until it is on. The pet's Behavior menu uses the same groups.
 - A single left click on a pet keeps the current app focused. Bubble clicks and explicit jump actions still open the tracked session; double-click reactions and Ctrl-double-click refresh remain available.
 - A pet keeps calling you while an agent waits for your permission, for up to an hour, even if nothing else happens meanwhile.
 - The NSIS uninstall macro attempts to remove only the uninstalling copy's Claude Code hooks before file removal and skips upgrades.
@@ -61,6 +61,6 @@ The first release with a downloadable Windows installer. It is **unsigned**; eac
 
 ### Still open before 1.0
 
-- An install, Connect, live Claude Code session and uninstall on a second Windows PC; Windows 10 stays listed as untested until it has been tried.
+- Connect and a live Claude Code session on a second Windows PC. Install, uninstall and a short run have been tried on a 10-year-old Windows 10 laptop, where performance was subpar.
 - Each Claude Code tool call waits about 0.8 seconds for two hooks. Running those two hooks in the background (Claude Code's `async` hook option) would remove that wait; it needs a live test first.
 - Code signing. Releases are unsigned with SHA-256 checksums until then.

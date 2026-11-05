@@ -544,7 +544,7 @@ RENDER.behavior = (root) => {
 
   root.append(
     h('h1', {}, `How ${petLabel(inst)} behaves`),
-    h('p', { class: 'lede' }, 'These settings belong to this pet on screen; each pet can have its own. Most are also in the pet\'s right-click menu.'),
+    h('p', { class: 'lede' }, 'These settings belong to this pet on screen; each pet can have its own. Most are also in the pet\'s middle-click menu.'),
     h('div', { class: 'settings top-row' },
       row('On screen', 'Hide this pet, or dismiss it in a puff of smoke.',
         h('div', { style: 'display:flex;gap:6px' },
@@ -653,7 +653,7 @@ RENDER.sounds = async (root) => {
     h('h1', {}, `${petLabel(inst)}'s sounds`),
     h('p', { class: 'lede' }, 'Tiny sounds, made in code, that play with animations. Pick a sound for any animation, switch it on or off, and set its volume. Each pet has its own mix, and a pet file can bring its own sounds.'),
     h('div', { class: 'settings' },
-      h('div', { class: 'setting' }, h('div', {}, h('div', { class: 't' }, 'Mute this pet'), h('div', { class: 'd' }, 'Hotkey and right-click menu can toggle this too.')),
+      h('div', { class: 'setting' }, h('div', {}, h('div', { class: 't' }, 'Mute this pet'), h('div', { class: 'd' }, 'Hotkey and middle-click menu can toggle this too.')),
         h('label', { class: 'switch' }, h('input', { type: 'checkbox', checked: snd.muted, onchange: (e) => setSound({ muted: e.target.checked }) }), h('span'))),
       h('div', { class: 'setting' }, h('div', {}, h('div', { class: 't' }, 'Volume'), h('div', { class: 'd' }, 'For all of this pet\'s sounds.')),
         h('label', { class: 'param' }, h('input', { type: 'range', min: 0, max: 100, step: 5, value: Math.round(snd.volume * 100), oninput: (e) => (volOut.textContent = e.target.value + '%'), onchange: (e) => setSound({ volume: Number(e.target.value) / 100 }) }), volOut)),

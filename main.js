@@ -360,7 +360,7 @@ function wireStudio() {
   handle('duplicate-instance', (uid) => host.duplicateInstance(uid));
   handle('remove-duplicates', () => host.removeDuplicates());
   handle('remove-instance', (uid) => host.removeInstance(uid));
-  handle('refresh-instance', (uid) => host.refreshPet(uid));
+  handle('refresh-instance', (uid) => { host.refreshPet(uid); }); // its return holds the window, which can't cross to Studio
   handle('move-instance', (uid, dir) => host.moveInstance(uid, dir));
   handle('set-cage-enabled', (on) => host.setCageEnabled(on));
   handle('set-general', (key, on) => { setGeneral(key, on); notifyStudio(); });

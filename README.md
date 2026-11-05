@@ -4,10 +4,10 @@
 
 Desktop pets that keep an eye on your coding agents. A pet sits on your screen, acts out what your agent is doing (thinking, working, waiting for you, done) and jumps you back into the right app with one click. It ships with **Clawrk**, a pixel crab. You can create your own pets with any coding agent, share them as single files, and run several at once, each following a different agent.
 
-**Windows x64 · beta · free and open source (MIT) · no telemetry.** Tested on Windows 11; Windows 10 should work but hasn't been tested yet. Electron blocks external network requests; configured buttons can open other applications or websites through Windows. Worried about the keyboard watcher? Don't take our word for it: [verify it yourself](#verify-it-yourself).
+**Windows x64 · beta · free and open source (MIT) · no telemetry.** Used daily on Windows 11, barely tested on Windows 10. Electron blocks external network requests; configured buttons can open other applications or websites through Windows. Worried about the keyboard watcher? Don't take our word for it: [verify it yourself](#verify-it-yourself).
 
 > [!IMPORTANT]
-> **This is a beta.** Harness Pet runs daily alongside real Claude Code sessions, but it has only been tried on a few PCs and display setups, and agents other than Claude Code are less tested. Expect rough edges, and please [open an issue](https://github.com/muncheslunches/harness-pet/issues) when you hit one. [CHANGELOG.md](CHANGELOG.md) lists what changed and what's still open.
+> **This is a barely tested beta.** Harness Pet runs daily alongside real Claude Code sessions, but it has only been tried on two PCs, and agents other than Claude Code are less tested. On a 10-year-old Windows 10 laptop with integrated graphics, it ran but performance was subpar. Expect rough edges, and please [open an issue](https://github.com/muncheslunches/harness-pet/issues) when you hit one. [CHANGELOG.md](CHANGELOG.md) lists what changed and what's still open.
 
 ![Clawrk animation supplied by the project owner](docs/images/clawrk.gif)
 
@@ -23,17 +23,17 @@ The screenshots use the current app with an isolated profile and sample session 
 - **A real speech bubble.** It shows the model ("Claude Opus 5.5") and the task. The tail always points at the pet. It turns into a thought bubble while the agent thinks, and a gold "shout" when the agent needs you. Drag it anywhere around the pet and it stays there. If that spot would go off-screen, it slides back into view and returns once there's room.
 - **ChatGPT-pet-style bar.** Minimize the bubble to a bell with a running count, which then collapses into a small pill.
 - **A proper pet menu (middle-click the pet):** jump, sessions, put to sleep (until you click or move it), disable for a while, animations, behavior, size, bubble, sounds, which agent to follow, buttons, always-on-top, click-through, and bring back on screen.
-- **Sounds.** A catalog of 25 tiny synthesized sounds, tied to animations. Each pet has its own mute and volume, and each animation gets its own sound, on/off switch and volume. Pets can ship their own sounds too.
+- **Sounds.** A catalog of 26 tiny synthesized sounds, tied to animations. Each pet has its own mute and volume, and each animation gets its own sound, on/off switch and volume. Pets can ship their own sounds too.
 - **Hotkeys.** System-wide shortcuts to show or hide pets, jump to the agent, press either button, open the Studio, mute, or put everything to sleep. Rebind them by pressing the keys; you're warned if another app already owns a combo.
 - **A crab that acts like a crab:** it wanders sideways, blows bubbles, digs and peeks out, dances, juggles, sneezes, naps in a nightcap, panics when picked up, giggles when double-clicked, and puffs up or squeezes when resized.
 - **Pets meet each other.** Walk into another pet and you get rejected, dizzy, while the other shoos you off. Drop one on another and it gets shoved aside. Idle neighbours wave.
 - **You decide how much it moves:** anchor it to its bar on a short leash, keep it on one screen, any screen or the taskbar, make it shy or clingy, let it fall when dropped, set its speed, or turn on calm mode.
 - **Gets out of your way** (optional, you're asked on first run). Standing on text while you type, a pet huffs and walks to a bare spot until you stop. With Caps Lock on, type `GO AWAY`, `GET OUT` or `MOVE` and every pet near text moves off it and stays put for 30 seconds to 5 minutes, or until you click it. See [Getting out of the way](#getting-out-of-the-way-of-text).
 - **Rests while you're away.** After 5 minutes without keyboard or mouse input pets slow right down; after 10 they fall asleep. Your first touch wakes them, and news from its agent wakes a pet too. It saves CPU and GPU, and you can change the times or turn it off.
-- **Any size.** Ctrl + mouse wheel over the pet resizes it from 50% to 300%, with a little mouse-wheel indicator. Bigger pets move slightly slower.
+- **Any size.** Ctrl + mouse wheel over the pet resizes it from 25% to 400%, with a little mouse-wheel indicator. Bigger pets move slightly slower.
 - **Studio:** a library with live previews, an animation tester with per-animation toggles and sliders, behavior settings, a pet-creation prompt maker, and agent setup.
 - **Modular pets.** A pet is one `.pet.js` file. Missing standard animations get stand-ins plus an **Include this** button that copies a prompt to add them. Custom animations (a bird that zooms across the screen at high speed, say) are detected automatically, with their own toggles and sliders.
-- **Pets run sandboxed, with no network, files or Node:** it can only draw and suggest movement.
+- **Pets run sandboxed, with no network, files or Node:** they can only draw and suggest movement.
 
 ## Run it
 
@@ -146,14 +146,14 @@ If a hook event goes missing, the pet reads the agent's own transcript (Claude C
 
 - **A pet is stuck or frozen.** **Ctrl + double-click** it, or choose **Refresh this pet** from its menu (also in the Studio). Refresh recreates its window and worker and keeps its position and settings. If you can't click the pet, choose **Refresh all pets** from the tray. A crashed pet window reloads automatically, up to twice per minute, and resets its mouse capture so it can't block the desktop.
 - **Pets look slow or asleep and you didn't ask for it.** They rest when there's no keyboard or mouse input, which includes watching a video. Move the mouse, or change the times in **General settings**.
-- **A pet is off-screen.** Middle-click menu → **Bring back on screen**, or **Refresh all pets** from the tray.
+- **A pet is off-screen.** Middle-click menu → **Bring it back on screen**, or **Bring all pets back on screen** from the tray.
 - **The Studio says settings could not be loaded or saved.** See [Settings recovery](#settings-recovery). A failed save is retried and the message clears on its own once a save succeeds.
 - **Claude Code shows hook errors after you moved the app.** Disconnect and Connect again from the new location (see [Uninstall](#uninstall) for other agents).
 - **Logs.** Crashes, helper errors, pet button presses, menu requests and input-delivery failures go to `~/.harness-pet/app.log`; hook failures go to `~/.harness-pet/hook-errors.log`. Review them before sharing; see [CONTRIBUTING.md](CONTRIBUTING.md#reporting-bugs-and-diagnostics) for opt-in diagnostics.
 
 ## Known limitations
 
-- **Windows x64 only.** Tested on Windows 11; Windows 10 hasn't been tested yet. macOS, Linux and Windows ARM64 aren't supported, and the installer build requires a Windows x64 build host.
+- **Windows x64 only.** Used daily on Windows 11. Windows 10 has only had a short test on one old laptop, without Claude Code. macOS, Linux and Windows ARM64 aren't supported, and the installer build requires a Windows x64 build host.
 - **Claude Code is the tested agent.** It has an automatic Connect/Disconnect flow and runs daily against the app. Other agents use setup prompts and may need manual hook configuration. Automated bridge tests cover Claude Code, Antigravity, Cursor and Codex event payloads, but that doesn't prove every integration works live. Gemini CLI, Copilot CLI, Windsurf and Cline are setup guides without live verification.
 - **Hooks add a little time to each tool call.** Claude Code waits for its hooks, and each Harness Pet hook starts PowerShell and Node (about 0.4 seconds on a typical PC), twice per tool call. PowerShell is what lets a hook exit quietly when the app has been removed.
 - **Keep the app at the path used during hook setup.** Disconnect before moving it, then reconnect from the new location. For other agents, update their hook commands manually.
@@ -184,12 +184,12 @@ The typing consent dialog includes the in-memory screen scan. Older profiles are
 
 ### Verify it yourself
 
-A desktop app with a global keyboard hook and screenshots can look like a keylogger, so you're right to check. Harness Pet ships as plain, readable files (no ASAR archive, no minified bundle), so you can inspect the exact code you run:
+A desktop app with a global keyboard hook and screenshots can look like a keylogger, so you're right to check. The app's JavaScript ships as plain, readable files (no ASAR archive, no minified bundle), so you can inspect the exact code you run. The two small Windows helpers are the exception: an install has them as compiled programs in `native/bin`, and their Rust source is in this repository, not in the install.
 
-- **Keyboard watcher:** [`native/rust/src/bin/keywatch.rs`](native/rust/src/bin/keywatch.rs) is the whole hook; [`native/key-watch.ps1`](native/key-watch.ps1) is the same thing in PowerShell, used if that program is missing or blocked. Either one prints `t` ("a key was pressed", at most every 250 ms) and, only while Caps Lock is on, the key code. [`lib/key-watch.js`](lib/key-watch.js) is the only code that reads that output.
+- **Keyboard watcher:** [`native/rust/src/bin/keywatch.rs`](native/rust/src/bin/keywatch.rs) is the whole hook, and an install runs it as `native/bin/harness-pet-keywatch.exe`; [`native/key-watch.ps1`](native/key-watch.ps1) is the same thing in PowerShell, used if that program is missing or blocked. Either one prints `t` ("a key was pressed", at most every 250 ms) and, only while Caps Lock is on, the key code. [`lib/key-watch.js`](lib/key-watch.js) is the only code that reads that output.
 - **Network blocking and sandboxing:** [`lib/security.js`](lib/security.js), [`lib/ipc-policy.js`](lib/ipc-policy.js) and [`runtime/pet-worker.js`](runtime/pet-worker.js).
 
-For an independent second opinion, use **[REA (Reverse Engineer Anything)](https://github.com/morluto/rea)**, a free, MIT-licensed, third-party tool that lets an AI coding agent (Claude Code, Codex, Cursor, Gemini CLI and others) analyze a program and show the evidence behind its answers. Harness Pet is not affiliated with REA. You need Node.js 22.19 or newer.
+For an independent second opinion, use **[REA (Reverse Engineer Anything)](https://github.com/morluto/rea)**, a free, MIT-licensed, third-party tool that lets an AI coding agent (Claude Code, Codex, Cursor, Gemini CLI and others) analyze a program and show the evidence behind its answers. Harness Pet is not affiliated with REA. You need Node.js 22.23.4 or newer in the 22.x line, 24.22.1 or newer in the 24.x line, or 26.12.1 or newer.
 
 > [!WARNING]
 > Install REA only from [github.com/morluto/rea](https://github.com/morluto/rea), [rea.tools](https://rea.tools/) or the [`rea-agents`](https://www.npmjs.com/package/rea-agents) npm package. Fake copies under similar names have shipped malware.
@@ -200,7 +200,7 @@ For an independent second opinion, use **[REA (Reverse Engineer Anything)](https
    npx rea-agents@latest setup
    ```
 
-2. Ask your agent something like this, using the folder you want to check. For an installed copy, that's `%LOCALAPPDATA%\Programs\Harness Pet\resources\app` by default. For a source checkout, use the project folder.
+2. Ask your agent something like this, using the folder you want to check. For an installed copy, that's `%LOCALAPPDATA%\Programs\Harness Pet\resources\app` by default. For a source checkout, use the project folder. The Rust source is only in a source checkout, so an installed copy can only answer for the PowerShell script.
 
    > Use REA to analyze the Electron app at `<folder>`. Does it send any data over the network? What do `native/rust/src/bin/keywatch.rs` and `native/key-watch.ps1` report to the app, and does anything store, log or transmit keystrokes or screenshots? Show me the evidence.
 
@@ -210,7 +210,7 @@ For an independent second opinion, use **[REA (Reverse Engineer Anything)](https
    npx -y rea-agents@latest analyze-javascript-application "$env:LOCALAPPDATA\Programs\Harness Pet\resources\app" --json
    ```
 
-The `node.exe` and Electron executables in an install come from the official Node.js and Electron releases; the build only renames the Electron executable and sets its icon and version details. REA's JavaScript analysis covers Harness Pet's own code. Inspecting those binaries needs a native decompiler such as Ghidra. Found something that contradicts this section? Please [report it privately](SECURITY.md).
+The `node.exe` and Electron executables in an install come from the official Node.js and Electron releases; the build only renames the Electron executable and sets its icon and version details. The two helpers in `native/bin` are built from `native/rust` by the [release workflow](.github/workflows/release.yml). REA's JavaScript analysis covers Harness Pet's own JavaScript. Inspecting any of those binaries needs a native decompiler such as Ghidra. Found something that contradicts this section? Please [report it privately](SECURITY.md).
 
 ### Settings recovery
 
@@ -272,10 +272,11 @@ On Windows x64 with Node.js installed (including its adjacent `LICENSE` file):
 
 ```powershell
 npm install
+npm run build:native
 npm run dist:win
 ```
 
-The installer is written to `dist/Harness-Pet-Setup-<version>-x64.exe`; `dist/win-unpacked` is the complete unpacked app for inspection. The build never publishes or launches the app. Self-built installers are unsigned; see [Windows signing](docs/WINDOWS_SIGNING.md). Official releases are built by the [release workflow](.github/workflows/release.yml) when a `v<version>` tag is pushed.
+`npm run build:native` needs [Rust](https://rustup.rs); without it the installer works but falls back to the PowerShell helpers. The installer is written to `dist/Harness-Pet-Setup-<version>-x64.exe`; `dist/win-unpacked` is the complete unpacked app for inspection. The build never publishes or launches the app. Self-built installers are unsigned; see [Windows signing](docs/WINDOWS_SIGNING.md). Official releases are built by the [release workflow](.github/workflows/release.yml) when a `v<version>` tag is pushed.
 
 ## License
 

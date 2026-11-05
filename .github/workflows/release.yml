@@ -83,7 +83,7 @@ jobs:
         uses: softprops/action-gh-release@5113cdc90fd4d541c801c55356214017bf5ae34b # v3
         with:
           draft: true
-          # v0.1.0-beta.4 is a pre-release; v1.0.0 is not
+          # v0.1.0-beta.5-final is a pre-release; v1.0.0 is not
           prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             dist/Harness-Pet-Setup-*.exe
