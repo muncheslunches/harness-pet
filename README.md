@@ -2,7 +2,9 @@
 
 # Harness Pet
 
-Desktop pets that keep an eye on your coding agents. A pet sits on your screen, acts out what your agent is doing (thinking, working, waiting for you, done) and jumps you back into the right app with one click. It ships with **Clawrk**, a pixel crab. You can create your own pets with any coding agent, share them as single files, and run several at once, each following a different agent.
+**TL;DR:** Give your coding agent a little life on your desktop. Harness Pet turns its activity into an animated companion, so you can see when it’s busy, needs you, or has finished—and jump back in with a click.
+
+**LR:** Desktop pets that keep an eye on your coding agents. A pet sits on your screen, acts out what your agent is doing (thinking, working, waiting for you, done) and jumps you back into the right app with one click. It ships with **Clawrk**, a pixel crab. You can create your own pets with any coding agent, share them as single files, and run several at once, each following a different agent.
 
 **Windows x64 · beta · free and open source (MIT) · no telemetry.** Used daily on Windows 11, barely tested on Windows 10. Electron blocks external network requests; configured buttons can open other applications or websites through Windows. Worried about the keyboard watcher? Don't take our word for it: [verify it yourself](#verify-it-yourself).
 
